@@ -1,6 +1,7 @@
 <script>
 	import { Eye, EyeClosed, Lock } from "lucide-svelte";
 	import TextS from "./TextS.svelte";
+	import { twMerge } from "tailwind-merge";
 
     let {
         value = $bindable(''),
@@ -10,7 +11,8 @@
         minLength = 8,
         maxLength = 65,
         required = true,
-        onInput = (v) => {}
+        onInput = (v) => {},
+        showIcon = true,
     } = $props();
 
     let show = $state(false);
@@ -21,7 +23,10 @@
         <TextS class='text-gray-500'>{label}</TextS>
     {/if}
     <div class="flex items-center relative">
-        <Lock class='min-w-4 max-w-4 absolute left-3 text-gray-600'/>
+        {#if showIcon}
+            <Lock class='min-w-4 max-w-4 absolute left-3 text-gray-600'/>
+        {/if}
+
         <input
             bind:value={value}
             placeholder={placeholder}
@@ -30,7 +35,7 @@
             required={required}
             oninput={(e) => onInput(e.target.value)}
             type={show ? "text" : 'password'}
-            class="bg-gray-50 border border-gray-200 rounded w-full indent-6 text-sm py-3"
+            class={twMerge("bg-gray-50 border border-gray-200 rounded w-full text-sm py-3", showIcon && 'indent-6')}
         >
         <button
             type="button"

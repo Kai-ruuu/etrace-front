@@ -4,10 +4,14 @@
 	import ButtonM from "$lib/components/global/ButtonM.svelte";
 	import Dropdown from "$lib/components/global/Dropdown.svelte";
 	import DropdownItem from "$lib/components/global/DropdownItem.svelte";
+	import InputFile from "$lib/components/global/InputFile.svelte";
+	import InputNumber from "$lib/components/global/InputNumber.svelte";
+	import InputPass from "$lib/components/global/InputPass.svelte";
 	import InputText from "$lib/components/global/InputText.svelte";
 	import RoundedCard from "$lib/components/global/RoundedCard.svelte";
 	import TextM from "$lib/components/global/TextM.svelte";
 	import TextS from "$lib/components/global/TextS.svelte";
+	import AgreementModalAlumni from "$lib/components/user/AgreementModalAlumni.svelte";
 	import { get } from "$lib/utils/api";
 	import { error } from "$lib/utils/ui";
 	import { ChevronLeft, ChevronRight, Plus, Trash, X } from "lucide-svelte";
@@ -62,6 +66,19 @@
     });
     let platforms = $state([]);
     let platformsLoading = $state(false);
+
+    let occData = $state({
+        name: { value: '', error: '' },
+        company: { value: '', error: '' },
+        address: { value: '', error: '' },
+        start_year: { value: null, error: '' },
+        end_year: { value: null, error: '' },
+        is_current: { value: true, error: '' },
+    });
+    let occupations = $state([]);
+    let occupationsLoading = $state(false);
+
+    let openAgreementModal = $state(false);
 
     function validateStudentNumber(value) {
         let val = value.trim();
@@ -209,6 +226,111 @@
             socialData.url.error = '';
     }
 
+    function validateOccupationName(value) {
+        let val = value.trim();
+
+        if (val.length === 0)
+            occData.name.error = 'Occupation is required.';
+        else if (val.length > 255)
+            occData.name.error = 'Occupation must not exceed 255 characters';
+        else
+            occData.name.error = '';
+    }
+
+    function validateCompany(value) {
+        let val = value.trim();
+
+        if (val.length === 0)
+            occData.company.error = 'Company name is required.';
+        else if (val.length > 512)
+            occData.company.error = 'Company name must not exceed 512 characters';
+        else
+            occData.company.error = '';
+    }
+
+    function validateCompanyAddress(value) {
+        let val = value.trim();
+
+        if (val.length === 0)
+            occData.address.error = 'Company address is required.';
+        else if (val.length > 512)
+            occData.address.error = 'Company address must not exceed 512 characters';
+        else
+            occData.address.error = '';
+    }
+
+    function validateStartYear(value) {
+        let val = parseInt(String(value));
+        
+        if (String(value).length === 0)
+            occData.start_year.error = 'Start year is required.';
+        else if (val > (new Date()).getFullYear())
+            occData.start_year.error = 'Start year is in the future';
+        else if (data.birth_date.value && (new Date(data.birth_date.value)).getFullYear() - val < 18)
+            occData.start_year.error = 'Start year is invalid.';
+        else if (occData.end_year.value && val > occData.end_year.value)
+            occData.start_year.error = 'Start year should be earlier or the same as the end year.';
+        else
+            occData.start_year.error = '';
+    }
+
+    function validateEndYear(value) {
+        let val = parseInt(String(value));
+        
+        if (String(value).length === 0)
+            occData.end_year.error = 'End year is required.';
+        else if (val > (new Date()).getFullYear())
+            occData.end_year.error = 'End year is in the future';
+        else if (occData.start_year.value && val < occData.start_year.value)
+            occData.end_year.error = 'End year should be later or the same as the start year.';
+        else
+            occData.end_year.error = '';
+    }
+
+    function validateProfilePicture(value) {
+        data.profile_picture.error = !value ? 'Profile picture is required.' : '';
+    }
+
+    function validateCv(value) {
+        data.cv.error = !value ? 'Curriculum vitae is required.' : '';
+    }
+
+    function validateEmail(value) {
+        let val = value.trim();
+        
+        if (val.length === 0) {
+            data.email.error = 'Email is required';
+        } else if (!value.includes('@')) {
+            data.email.error = 'Invalid email address';
+        } else {
+            data.email.error = '';
+        }
+    }
+
+    function validatePassword(value) {
+        let val = value.trim();
+
+        if (val.length === 0)
+            data.password.error = 'Password is required.';
+        else if (val.length > 8)
+            data.password.error = 'Occupation must not exceed 8 characters';
+        else
+            data.password.error = '';
+    }
+
+    function validatePasswordConfirm(value) {
+        let val = value.trim();
+
+        if (val.length === 0)
+            data.password_confirmed.error = 'Password is required.';
+        else if (val.length > 8)
+            data.password_confirmed.error = 'Password must not exceed 8 characters';
+        else if (val !== data.password.value)
+            data.password_confirmed.error = 'Password do not match.';
+        else
+            data.password_confirmed.error = '';
+    }
+
     onMount(async () => {
         await get('/api/institution/course/all', {
             onSuccess: async (_data) => {
@@ -220,6 +342,7 @@
             onFinish: () => coursesLoading = false,
             onFail: async (err) => error(err?.message ?? 'Unable to fetch courses.')
         });
+
         await get('/api/social-media/platforms', {
             onSuccess: async (_data) => {
                 if (_data.length > 0)
@@ -230,6 +353,18 @@
             onStart: () => platformsLoading = true,
             onFinish: () => platformsLoading = false,
             onFail: async (err) => error(err?.message ?? 'Unable to fetch social media platforms.')
+        });
+
+        await get('/api/institution/occupation/all', {
+            onSuccess: async (_data) => {
+                if (_data.length > 0)
+                    occupations = _data.map((d) => d.name);
+
+                console.log(data);
+            },
+            onStart: () => occupationsLoading = true,
+            onFinish: () => occupationsLoading = false,
+            onFail: async (err) => error(err?.message ?? 'Unable to fetch occupations.')
         });
     });
 </script>
@@ -346,7 +481,7 @@
                                 <DropdownItem value='Separated' label='Separated'/>
                             </Dropdown>
                     {:else if categCurrent === 'Contact & Professional Details'}
-                        {#if !platformsLoading}
+                        {#if !platformsLoading || !occupationsLoading}
                             <InputText
                                 label='Phone Number'
                                 minLength={8}
@@ -439,10 +574,146 @@
                                 <DropdownItem value='Unemployed' label='Unemployed'/>
                             </Dropdown>
                             
-                            
+                            {#if data.employment_status.value !== 'Unemployed'}
+                                <div class="flex flex-col items-stretch gap-y-2">
+                                    <TextS>Occupations</TextS>
+                                    {#if data.occupations.value.length > 0}
+                                        <div class="flex flex-col gap-y-2">
+                                            {#each data.occupations.value as occupation}
+                                                <div class="grow flex items-center gap-x-2 overflow-hidden">
+                                                    <TextS class='grow max-w-full truncate'>{occupation.name.value}</TextS>
+                                                    <ButtonM
+                                                        Icon={Trash}
+                                                        class='px-1 py-0 bg-red-500 shrink-0'
+                                                        onclick={() => data.occupations.value = data.occupations.value.filter((o) => o !== occupation)}
+                                                    />
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    {:else}
+                                        <TextS class='mt-2'>No occupations were added yet.</TextS>
+                                    {/if}
+                                    <div class="flex flex-col items-stretch">
+                                        <datalist id="occupations">
+                                            {#each occupations as occupation}
+                                                <option value={occupation}></option>
+                                            {/each}
+                                        </datalist>
+                                        <InputText
+                                            label='Occupation Name'
+                                            list='occupations'
+                                            maxLength={255}
+                                            bind:value={occData.name.value}
+                                            bind:error={occData.name.error}
+                                            onInput={validateOccupationName}
+                                        />
+                                        <InputText
+                                            label='Company Name'
+                                            maxLength={512}
+                                            bind:value={occData.company.value}
+                                            bind:error={occData.company.error}
+                                            onInput={validateCompany}
+                                        />
+                                        <label for="current" class="flex items-center gap-x-2 cursor-pointer">
+                                            <input type="checkbox" id="current" class="rounded" bind:checked={occData.is_current.value}>
+                                            <TextS>I still work here</TextS>
+                                        </label>
+                                        <InputText
+                                            label='Address'
+                                            maxLength={512}
+                                            bind:value={occData.address.value}
+                                            bind:error={occData.address.error}
+                                            onInput={validateCompanyAddress}
+                                        />
+                                        <InputNumber
+                                            label='Start Year'
+                                            bind:value={occData.start_year.value}
+                                            bind:error={occData.start_year.error}
+                                            onInput={validateStartYear}
+                                        />
+                                        {#if !occData.is_current.value}
+                                            <InputNumber
+                                                label='End Year'
+                                                bind:value={occData.end_year.value}
+                                                bind:error={occData.end_year.error}
+                                                onInput={validateEndYear}
+                                            />
+                                        {/if}
+                                        <ButtonM
+                                            Icon={Plus}
+                                            label='Add Occupation'
+                                            class='mt-2'
+                                            onclick={() => {
+                                                validateOccupationName(occData.name.value);
+                                                validateCompany(occData.company.value);
+                                                validateCompanyAddress(occData.address.value);
+                                                validateStartYear(occData.start_year.value);
+                                                validateEndYear(occData.end_year.value);
+                                                
+                                                if (
+                                                    occData.name.error ||
+                                                    occData.company.error ||
+                                                    occData.address.error ||
+                                                    occData.start_year.error ||
+                                                    occData.end_year.error
+                                                ) {
+                                                    error('Cannot add the occupation yet.');
+                                                    return;
+                                                }
+
+                                                data.occupations.value = [...data.occupations.value, occData];
+                                                occData = {
+                                                    name: { value: '', error: '' },
+                                                    company: { value: '', error: '' },
+                                                    address: { value: '', error: '' },
+                                                    start_year: { value: null, error: '' },
+                                                    end_year: { value: null, error: '' },
+                                                    is_current: { value: '', error: '' },
+                                                };
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            {/if}
                         {/if}
                     {:else if categCurrent === 'Profile Attachments'}
+                        <InputFile
+                            label='Profile Picture'
+                            placeholder='profile-picture.png'
+                            accept={['.png', '.jpeg', '.jpg']}
+                            bind:value={data.profile_picture.value}
+                            bind:error={data.profile_picture.error}
+                            onChange={validateProfilePicture}
+                        />
+                        <InputFile
+                            label='Curriculum Vitae'
+                            placeholder='curriculum-vitae.pdf'
+                            accept={['.pdf']}
+                            bind:value={data.cv.value}
+                            bind:error={data.cv.error}
+                            onChange={validateCv}
+                        />
                     {:else}
+                        <InputText
+                            label='Email'
+                            bind:value={data.email.value}
+                            bind:error={data.email.error}
+                            onInput={validateEmail}
+                        />
+                        <InputPass
+                            label='Password'
+                            showIcon={false}
+                            bind:value={data.password.value}
+                            bind:error={data.password.error}
+                            onInput={validatePassword}
+                        />
+                        <InputPass
+                            label='Re-enter Password'
+                            showIcon={false}
+                            bind:value={data.password_confirmed.value}
+                            bind:error={data.password_confirmed.error}
+                            onInput={validatePasswordConfirm}
+                        />
                     {/if}
                 </div>
             </div>
@@ -475,10 +746,17 @@
                         Icon={ChevronRight}
                         label={'Proceed'}
                         iconRight={true}
-                        onclick={() => {}}
+                        onclick={() => {
+                            openAgreementModal = true;
+                        }}
                     />
                 {/if}
             </div>
         </RoundedCard>
     </div>
 </BaseContainer>
+
+<AgreementModalAlumni
+    bind:show={openAgreementModal}
+    data={new FormData()}
+/>
