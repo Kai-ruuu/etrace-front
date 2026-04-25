@@ -11,7 +11,7 @@
 	import { AlertCircle, BadgeCheck, Calendar, CheckCircle, File, Flag, Info, Lock, MessageCircle, Send, ShieldUser, Star } from "lucide-svelte";
 	import { onMount } from "svelte";
 
-    let { profile } = $props();
+    let { profile, openVercent = $bindable(false) } = $props();
 
 	let status = $derived($user.profile.ver_stat_dean);
 
@@ -53,7 +53,15 @@
 </script>
 
 <div class="w-full min-h-full overflow-y-auto scrollbar p-4 bg-white flex flex-col items-stretch">
-	<TextM class='font-bold text-gray-700/80'>Verification Center</TextM>
+	<div class="flex items-center justify-between">
+		<TextM class='font-bold text-gray-700/80'>Verification Center</TextM>
+		<button
+			onclick={() => openVercent = false}
+			class="text-xs px-3 py-1 rounded border transition-colors cursor-pointer border-red-100 text-red-500 hover:bg-red-50"
+		>
+			Exit
+		</button>
+	</div>
 
 	{#if status === 'Pending'}
 		<div class="flex items-center pt-4">

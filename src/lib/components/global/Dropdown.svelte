@@ -1,6 +1,7 @@
 <script>
 	import { twMerge } from "tailwind-merge";
 	import TextS from "./TextS.svelte";
+	import { readonly } from "svelte/store";
 
     let {
         value = $bindable(''),

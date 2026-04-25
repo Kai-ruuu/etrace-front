@@ -8,6 +8,7 @@
 
     let {
         show = $bindable(false),
+        onExit = () => {},
         heading = 'Modal Heading',
         class: className = '',
         overflow = false,
@@ -25,7 +26,11 @@
                 <TextM>{heading}</TextM>
                 <ButtonM
                     Icon={X}
-                    onclick={() => show = false}
+                    onclick={() => {
+                        if (onExit) onExit();
+                        
+                        show = false;
+                    }}
                     class='p-0 px-1 bg-red-500'
                 />
             </div>

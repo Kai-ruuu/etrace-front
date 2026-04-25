@@ -7,7 +7,7 @@
 	import Modal from "$lib/components/global/modals/Modal.svelte";
 	import Pagination from "$lib/components/global/Pagination.svelte";
 	import AdminHeader from "$lib/components/user/AdminHeader.svelte";
-	import { deleteJson, get, patchJson, postJson } from "$lib/utils/api";
+	import { deleteJson, get, patchJson, postJson, queryToString } from "$lib/utils/api";
 	import { error, formatDate, success } from "$lib/utils/ui";
 	import { Pen, Plus, Search } from "lucide-svelte";
 	import { onMount } from "svelte";
@@ -156,6 +156,14 @@
                             <td class="px-4 py-3 text-gray-500">{formatDate(occupation.created_at)}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-x-2">
+                                    {#if !alignedFilter}
+                                        <a
+                                            href={`https://www.google.com/search?${queryToString({ q: `Is ${occupation.name} aligned to the course ${courses.find((c) => c.id === courseFilter).name}` })}`}
+                                            class="text-xs px-3 py-1 rounded border transition-colors cursor-pointer border-blue-100 text-blue-500 hover:bg-blue-50"
+                                        >
+                                            Web Search
+                                        </a>
+                                    {/if}
                                     <button
                                         onclick={() => {
                                             if (alignedFilter) {
@@ -170,7 +178,7 @@
                                             "text-xs px-3 py-1 rounded border transition-colors cursor-pointer",
                                             alignedFilter
                                                 ? 'border-red-100 text-red-500 hover:bg-red-50'
-                                                : 'border-blue-100 text-blue-500 hover:bg-blue-50'
+                                                : 'border-blue-100 text-green-500 hover:bg-green-50'
                                         )}
                                     >
                                         {`${alignedFilter ? 'Unalign' : 'Align'} to ${courses.find((c) => c.id === courseFilter).code}`}

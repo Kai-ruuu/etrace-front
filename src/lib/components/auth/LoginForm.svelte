@@ -114,9 +114,14 @@
                     onclick={onLogin}
                 />
         
-                <a href="/">
-                    <TextS class='text-center text-blue-900'>Forgot Password</TextS>
-                </a>
+                <div class='flex items-center justify-between'>
+                    <a href="/">
+                        <TextS class='text-blue-900 hover:underline'>Forgot Password</TextS>
+                    </a>
+                    <a href="/resend-verification">
+                        <TextS class='text-blue-900 hover:underline'>Can't verify email?</TextS>
+                    </a>
+                </div>
         
                 <hr class="border-t border-gray-200 my-4">
         

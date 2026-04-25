@@ -31,7 +31,7 @@
 
             <div>
                 <h1 class="text-lg font-medium text-gray-900">Create your account</h1>
-                <p class="text-sm text-gray-500 mt-0.5">Choose how you'll be using the alumni career network.</p>
+                <p class="text-sm text-gray-500 mt-0.5">Choose how you'll be using the E-trace+:</p>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -68,11 +68,11 @@
             <hr class="border-gray-100" />
 
             <ButtonM
-                label={selectedRole ? `Continue as ${roles.find(r => r.id === selectedRole)?.label}` : "Select a role to continue"}
+                label={selectedRole ? `Continue as ${roles.find(r => r.id === selectedRole)?.label}` : "Proceed"}
                 disabled={!selectedRole}
                 onclick={() => {
                     const role = roles.find(r => r.id === selectedRole);
-                    if (role) goto(role.href);
+                    if (role) goto(role.href, { replaceState: true });
                 }}
                 class="w-full justify-center"
             />

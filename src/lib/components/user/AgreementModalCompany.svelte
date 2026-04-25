@@ -17,7 +17,7 @@
     let agreed = $state(false);
 
     async function onProceed() {
-        await postForm(`/api/auth/register/alumni`, data, {
+        await postForm(`/api/auth/register/company`, data, {
             onSuccess: async (_data) => {
                 show = false;
                 success(_data?.message ?? 'You are now registered to E-trace+! Do not forget to verify your email.');
@@ -36,7 +36,7 @@
     <div class="fixed w-screen h-dvh bg-gray-300/50 p-8 flex items-center justify-center inset-0 z-100">
         <RoundedCard class='flex flex-col items-stretch w-full md:w-3/5 gap-y-4 relative py-0 max-h-full overflow-auto scrollbar'>
             <div class="flex items-center justify-between sticky top-0 bg-white pt-6 pb-2">
-                <TextM>Alumni Privacy Notice & Consent</TextM>
+                <TextM>Company Privacy Notice & Consent</TextM>
                 <ButtonM
                     Icon={X}
                     onclick={onExit}
@@ -46,31 +46,60 @@
             
             <div class="space-y-4 text-justify">
                 <TextM>1. Introduction</TextM>
-                <TextS>Welcome to the CCT Alumni Career Tracking and Employment Analytics System (E-Trace). The City College of Tagaytay (CCT) is committed to protecting your personal data in accordance with the Data Privacy Act of 2012. By registering in this system, you support the institution in improving academic programs, meeting accreditation requirements, and monitoring the career outcomes of its graduates.</TextS>
+                <TextS>Welcome to the CCT Alumni Career Tracking and Employment Analytics System (E-Trace). The City College of Tagaytay (CCT) is committed to handling company and representative data in accordance with the Data Privacy Act of 2012. By registering in the system, the company agrees to provide accurate information for verification and employment facilitation purposes.</TextS>
             </div>
 
             <hr class="border-t border-gray-200 mb-2">
             
             <div class="space-y-4 text-justify">
                 <TextM>2. Information We Collect</TextM>
-                <TextS>The system collects only necessary personal and employment information, including:</TextS>
+                <TextS>The system collects the following company-related information and documents:</TextS>
                 <div>
-                    <TextS>Personal Information:</TextS>
+                    <TextS>Company Profile Information:</TextS>
                     <ul class="list-disc list-inside">
                         <li class="flex items-center">
-                            <TextS>● Full name</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● Date of birth</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● Phone number</TextS>
+                            <TextS>● Company name</TextS>
                         </li>
                         <li class="flex items-center">
                             <TextS>● Email address</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Current home address</TextS>
+                            <TextS>● Contact details</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Company address</TextS>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <TextS>Verification Documents:</TextS>
+                    <ul class="list-disc list-inside">
+                        <li class="flex items-center">
+                            <TextS>● Company Profile</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Business Permit</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● SEC</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● DTI / CDA Reg.</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Registry of Establishment fr. DOLE</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Certification from DOLE Provincial Office</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Certification of No. Pending Case</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Phil-Jobnet Reg.</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● List of Vacancies (w/Qualifications and No. of Vacancies per position to be deployed at Tagaytay City)</TextS>
                         </li>
                     </ul>
                 </div>
@@ -78,16 +107,7 @@
                     <TextS>Employment Information:</TextS>
                     <ul class="list-disc list-inside">
                         <li class="flex items-center">
-                            <TextS>● Employment status (e.g., employed, unemployed, self-employed)</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● Current job position</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● Company name</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● Company address</TextS>
+                            <TextS>● Job postings and list of vacancies</TextS>
                         </li>
                     </ul>
                 </div>
@@ -98,44 +118,42 @@
             <div class="space-y-4 text-justify">
                 <TextM>3. Purpose of Data Collection</TextM>
                 <div>
-                    <TextS>All collected data will be used strictly for institutional purposes, including:</TextS>
+                    <TextS>The collected information will be used solely for:</TextS>
                     <ul class="list-disc list-inside">
                         <li class="flex items-center">
-                            <TextS>● Monitoring alumni employment status and career progression</TextS>
+                            <TextS>● Verifying the legitimacy of the company</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Generating statistical reports for academic evaluation and planning</TextS>
+                            <TextS>● Approving and managing company accounts</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Supporting curriculum improvement and accreditation requirements</TextS>
+                            <TextS>● Ensuring that job postings are valid and credible</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Strengthening alumni engagement and institutional development</TextS>
+                            <TextS>● Facilitating employment opportunities for alumni</TextS>
+                        </li>
+                        <li class="flex items-center">
+                            <TextS>● Supporting institutional employment and reporting processes</TextS>
                         </li>
                     </ul>
                 </div>
-
-                <TextS class='font-bold text-gray-700/80'>Note: All reports and analytics will be presented in aggregated and anonymized form, and no personal data will be publicly disclosed.</TextS>
             </div>
 
             <hr class="border-t border-gray-200 mb-2">
             
             <div class="space-y-4 text-justify">
-                <TextM>4. Data Privacy and Protection</TextM>
+                <TextM>4. Data Protection</TextM>
                 <div>
-                    <TextS>The system is designed in accordance with the Data Privacy Act of 2012 (RA 10173) and follows these principles:</TextS>
+                    <TextS>All company data and submitted documents are handled with appropriate security measures, including:</TextS>
                     <ul class="list-disc list-inside">
                         <li class="flex items-center">
-                            <TextS>● Data Minimization: Only necessary information is collected</TextS>
+                            <TextS>● Restricted access to authorized personnel only</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Confidentiality: Access is limited to authorized personnel</TextS>
+                            <TextS>● Secure storage of uploaded documents</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Security: Secure login and access control mechanisms are implemented</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● Integrity: Data is protected against unauthorized modification</TextS>
+                            <TextS>● Protection against unauthorized access, disclosure, or modification</TextS>
                         </li>
                     </ul>
                 </div>
@@ -144,24 +162,23 @@
             <hr class="border-t border-gray-200 mb-2">
             
             <div class="space-y-4 text-justify mb-4">
-                <TextM>5. Rights of the Data Subject</TextM>
+                <TextM>5. Responsibilities of the Company</TextM>
                 <div>
-                    <TextS>By accessing the system, I confirm that:</TextS>
+                    <TextS>By registering, the company agrees to:</TextS>
                     <ul class="list-disc list-inside">
                         <li class="flex items-center">
-                            <TextS>● Access and review your personal data</TextS>
+                            <TextS>● Provide accurate, complete, and updated information</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Update or correct your information to ensure accuracy</TextS>
+                            <TextS>● Submit valid and legitimate documents for verification</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Request account deactivation</TextS>
+                            <TextS>● Post truthful and relevant job opportunities</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● Request deletion of your personal data, subject to institutional policies and legal requirements</TextS>
+                            <TextS>● Comply with system policies and verification procedures</TextS>
                         </li>
                     </ul>
-                    <TextS>The institution may retain limited necessary data for legitimate academic, research, and reporting purposes in accordance with applicable laws.</TextS>
                 </div>
             </div>
 
@@ -170,19 +187,16 @@
             <div class="space-y-4 text-justify mb-4">
                 <TextM>6. Declaration and Consent</TextM>
                 <div>
-                    <TextS>By selecting “I Agree” or registering in the system, I confirm that:</TextS>
+                    <TextS>By selecting “I Agree” or registering in the system, the company confirms that:</TextS>
                     <ul class="list-disc list-inside">
                         <li class="flex items-center">
-                            <TextS>● I have read and understood this Privacy Notice</TextS>
+                            <TextS>● All submitted information and documents are accurate and authorized</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● I voluntarily provide my personal and employment information</TextS>
+                            <TextS>● The company consents to the collection and use of its data for verification and employment facilitation purposes</TextS>
                         </li>
                         <li class="flex items-center">
-                            <TextS>● I understand that my data will be used solely for alumni tracking and institutional purposes of the City College of Tagaytay</TextS>
-                        </li>
-                        <li class="flex items-center">
-                            <TextS>● I understand that my data will be used solely for alumni tracking and institutional purposes of the City College of Tagaytay</TextS>
+                            <TextS>● The company agrees to comply with system policies and applicable data protection regulations</TextS>
                         </li>
                     </ul>
                 </div>

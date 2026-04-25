@@ -14,7 +14,7 @@
 	import AgreementModalAlumni from "$lib/components/user/AgreementModalAlumni.svelte";
 	import { get } from "$lib/utils/api";
 	import { error } from "$lib/utils/ui";
-	import { ChevronLeft, ChevronRight, Plus, Trash, X } from "lucide-svelte";
+	import { ChevronLeft, ChevronRight, Key, Plus, Trash, X } from "lucide-svelte";
 	import { onMount } from "svelte";
 	import { twMerge } from "tailwind-merge";
 
@@ -35,9 +35,9 @@
         graduation_year: { value: (new Date()).getFullYear(), error: '' },
 
         first_name: { value: '', error: '' },
-        middle_name: { value: null, error: '' },
+        middle_name: { value: '', error: '' },
         last_name: { value: '', error: '' },
-        name_extension: { value: null, error: '' },
+        name_extension: { value: '', error: '' },
         gender: { value: 'Male', error: '' },
         birth_date: { value: null, error: '' },
         birth_place: { value: '', error: '' },
@@ -79,8 +79,14 @@
     let occupationsLoading = $state(false);
 
     let openAgreementModal = $state(false);
+    let openAgreementData = $state(null);
 
     function validateStudentNumber(value) {
+        if (value === null) {
+            data.student_number.error = '';
+            return;
+        }
+        
         let val = value.trim();
 
         if (val.length === 0) {
@@ -108,6 +114,11 @@
     }
 
     function validateMiddleName(value) {
+        if (value === null) {
+            data.middle_name.error = '';
+            return;
+        }
+        
         let val = value.trim();
 
         if (val.length === 0) {
@@ -133,6 +144,11 @@
     }
 
     function validateNameExtension(value) {
+        if (value === null) {
+            data.name_extension.error = '';
+            return;
+        }
+        
         let val = value.trim();
 
         if (val.length === 0) {
@@ -266,7 +282,7 @@
             occData.start_year.error = 'Start year is required.';
         else if (val > (new Date()).getFullYear())
             occData.start_year.error = 'Start year is in the future';
-        else if (data.birth_date.value && (new Date(data.birth_date.value)).getFullYear() - val < 18)
+        else if (data.birth_date.value && val - (new Date(data.birth_date.value)).getFullYear() < 18)
             occData.start_year.error = 'Start year is invalid.';
         else if (occData.end_year.value && val > occData.end_year.value)
             occData.start_year.error = 'Start year should be earlier or the same as the end year.';
@@ -326,9 +342,80 @@
         else if (val.length > 8)
             data.password_confirmed.error = 'Password must not exceed 8 characters';
         else if (val !== data.password.value)
-            data.password_confirmed.error = 'Password do not match.';
+            data.password_confirmed.error = 'Passwords do not match.';
         else
             data.password_confirmed.error = '';
+    }
+
+    function validateAndSubmit() {
+        validateStudentNumber(data.student_number.value);
+        validateFirstName(data.first_name.value);
+        validateMiddleName(data.middle_name.value);
+        validateLastName(data.last_name.value);
+        validateNameExtension(data.name_extension.value);
+        validateBirthDate(data.birth_date.value);
+        validateBirthPlace(data.birth_place.value);
+        validatePhoneNumber(data.phone_number.value);
+        validateAddress(data.address.value);
+        validateProfilePicture(data.profile_picture.value);
+        validateCv(data.cv.value);
+        validateEmail(data.email.value);
+        validatePassword(data.password.value);
+        validatePasswordConfirm(data.password_confirmed.value);
+
+        if (
+            data.student_number.error ||
+            data.first_name.error ||
+            data.middle_name.error ||
+            data.last_name.error ||
+            data.name_extension.error ||
+            data.birth_date.error ||
+            data.birth_place.error ||
+            data.phone_number.error ||
+            data.address.error ||
+            data.profile_picture.error ||
+            data.cv.error ||
+            data.email.error ||
+            data.password.error ||
+            data.password_confirmed.error
+        ) {
+            error('Cannot register yet. Please double check all the fields');
+            return;
+        }
+
+        if (data.social_medias.value.length <= 0) {
+            error('At lest one social media information is required.');
+            return;
+        }
+
+        if (data.occupations.value.length <= 0 && data.employment_status.value !== 'Unemployed') {
+            error('At least one occupation is required.');
+            return;
+        }
+
+        let formData = new FormData();
+
+        Object.entries(data).forEach(([key, value]) => {
+            if (key === 'occupations')
+                formData.append(key, JSON.stringify(value.value.map((o) => ({
+                    name: o.name.value,
+                    company: o.company.value,
+                    address: o.address.value,
+                    start_year: o.start_year.value,
+                    end_year: o.end_year.value,
+                    is_current: o.is_current.value,
+                }))));
+            else if (key === 'social_medias')
+                formData.append(key, JSON.stringify(value.value.map((o) => ({
+                    platform: o.platform.value,
+                    url: o.url.value,
+                }))));
+            else
+                formData.append(key, value.value ?? '')
+        });
+
+        openAgreementData = formData;
+        openAgreementModal = true;
     }
 
     onMount(async () => {
@@ -359,8 +446,6 @@
             onSuccess: async (_data) => {
                 if (_data.length > 0)
                     occupations = _data.map((d) => d.name);
-
-                console.log(data);
             },
             onStart: () => occupationsLoading = true,
             onFinish: () => occupationsLoading = false,
@@ -722,7 +807,7 @@
                     <ButtonM
                         Icon={X}
                         label='Cancel'
-                        onclick={() => goto('/registration')}
+                        onclick={() => goto('/registration', { replaceState: true })}
                         class='bg-red-500'
                     />
                 {/if}
@@ -746,9 +831,7 @@
                         Icon={ChevronRight}
                         label={'Proceed'}
                         iconRight={true}
-                        onclick={() => {
-                            openAgreementModal = true;
-                        }}
+                        onclick={validateAndSubmit}
                     />
                 {/if}
             </div>
@@ -758,5 +841,5 @@
 
 <AgreementModalAlumni
     bind:show={openAgreementModal}
-    data={new FormData()}
+    data={openAgreementData}
 />

@@ -9,6 +9,8 @@
 
     let {
         heading = '',
+        query = $bindable(''),
+        onSearch,
         forVercent = false
     } = $props();
 </script>
@@ -27,10 +29,14 @@
     <div class="col-span-8">
         {#if !forVercent}
             <InputText
+                bind:value={query}
                 placeholder='Search job posts'
                 Icon={Search}
                 btnLabel='Search'
                 BtnIcon={Search}
+                onBtnClick={onSearch}
+                allowClear={true}
+                onClear={onSearch}
             />
         {/if}
     </div>

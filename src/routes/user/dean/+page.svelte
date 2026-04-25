@@ -15,7 +15,7 @@
 
   const academicSummary = [
     { label: 'Schools',      total: 6,    active: 5,    secondary: 1,   secondaryLabel: 'archived' },
-    { label: 'Programs',      total: 24,   active: 20,   secondary: 4,   secondaryLabel: 'archived' },
+    { label: 'Courses',      total: 24,   active: 20,   secondary: 4,   secondaryLabel: 'archived' },
   ];
 
   const courses = [

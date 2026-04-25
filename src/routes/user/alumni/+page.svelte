@@ -12,11 +12,11 @@
 	import { user } from "$lib/stores/user";
 	import { apiUrl, deleteJson, geocode, get, postJson } from "$lib/utils/api";
 	import { error, formatDate, formatNumber, success } from "$lib/utils/ui";
-	import { BadgeCheck, Book, Briefcase, Calendar, CheckCircle, ChevronRight, CircleDollarSign, File, GraduationCap, Info, Link, LogOut, Mail, MapPin, Monitor, Phone, Scroll, Share, Smartphone, SunMoon, ThumbsUp, Upload, User, UserSearch, X } from "lucide-svelte";
+	import { BadgeCheck, Book, Briefcase, Calendar, CheckCircle, ChevronRight, CircleDollarSign, File, GraduationCap, Info, Link, LogOut, Mail, MapPin, Monitor, Phone, Scroll, Settings, Share, Smartphone, SunMoon, ThumbsUp, Upload, User, UserSearch, X } from "lucide-svelte";
 	import { onMount } from "svelte";
 	import { twMerge } from "tailwind-merge";
 
-    let selectedCareerAddress = $state(null)
+    let selectedCareerId = $state(null)
     let query = $state('');
     let isFetching = $state(false);
     let sentinelEl = $state(null);
@@ -46,6 +46,10 @@
     let openPost = $state(false);
 
     let openVercent = $state(false);
+
+    let openProfile = $state(false);
+    let openCvModal = $state(false);
+    let openCvModalUrl = $state(null);
 
     async function fetchPage(page, append = false) {
         if (isFetching) return;
@@ -127,11 +131,11 @@
         });
     }
 
-    async function onGeocodeCareerAddress() {
+    async function onGeocodeCareerAddress(occupation) {
         mapLoading = true;
 		
 		try {
-            const data = await geocode(selectedCareerAddress);
+            const data = await geocode(occupation.address);
 
 			if (typeof data === "string") {
 				mapErrMsg = data;
@@ -188,9 +192,11 @@
 
         let careers = $user.profile.occupations;
 
-        if (careers.length > 0) selectedCareerAddress = careers[0].address;
+        if (careers.length > 0) {
+            selectedCareerId = careers[0].id;
+            await onGeocodeCareerAddress(careers[0]);
+        }
 
-        await onGeocodeCareerAddress();
 
         // Set up IntersectionObserver on the sentinel element
         const observer = new IntersectionObserver(
@@ -208,7 +214,7 @@
     });
 </script>
 
-<AlumniHeader />
+<AlumniHeader bind:query={query} {onSearch}/>
 
 <div class="flex-1 min-h-0 space-y-2 overflow-y-hidden px-4 pt-4 pb-2 bg-white/25 grid grid-cols-16 gap-4">
     <div class="grow min-h-0 relative col-span-4">
@@ -233,6 +239,12 @@
                     </div>
                     <div class="flex items-center gap-x-3">
                         <div class="min-w-8 h-8 rounded flex items-center justify-center bg-gray-100">
+                            <Briefcase class='w-4 text-gray-600'/>
+                        </div>
+                        <TextS class='max-w-full truncate'>{$user.profile.employment_status}</TextS>
+                    </div>
+                    <div class="flex items-center gap-x-3">
+                        <div class="min-w-8 h-8 rounded flex items-center justify-center bg-gray-100">
                             <Phone class='w-4 text-gray-600'/>
                         </div>
                         <TextS class='max-w-full truncate'>{$user.profile.phone_number}</TextS>
@@ -243,22 +255,13 @@
                         </div>
                         <TextS class='max-w-full truncate'>{$user.profile.course.name}</TextS>
                     </div>
-                    <div class="flex flex-col items-stretch gap-y-2">
-                        <div class="flex items-center gap-x-3">
-                            <div class="min-w-8 h-8 rounded flex items-center justify-center bg-gray-100">
-                                <Smartphone class='w-4 text-gray-600'/>
-                            </div>
-                            <TextS class='max-w-full truncate'>Social Media:</TextS>
-                        </div>
-                        <div class="pl-8 space-y-1">
-                            {#each $user.profile.social_medias as social}
-                                <a href={social.url} target="_blank" class="flex items-center gap-x-3">
-                                    <Link class='w-4 text-gray-600'/>
-                                    <TextS class='max-w-full truncate underline'>{social.platform.name}</TextS>
-                                </a>
-                            {/each}
-                        </div>
-                    </div>
+                    <ButtonM
+                        Icon={ChevronRight}
+                        label='View Profile'
+                        iconRight={true}
+                        onclick={() => openProfile = true}
+                        class='w-full bg-transparent border border-blue-900/50 text-blue-900'
+                    />
                 </div>
             </RoundedCard>
             <RoundedCard class='p-4'>
@@ -276,9 +279,12 @@
                     <ThumbsUp class='w-4 text-gray-500'/>
                     <TextS>Liked Posts</TextS>
                 </button>
-                <button class="flex items-center gap-x-3 p-2 cursor-pointer w-full hover:bg-gray-100 transition-colors rounded">
-                    <User class='w-4 text-gray-500'/>
-                    <TextS>Account</TextS>
+                <button
+                    onclick={() => goto('/user/alumni/settings', { replaceState: true })}
+                    class="flex items-center gap-x-3 p-2 cursor-pointer w-full hover:bg-gray-100 transition-colors rounded"
+                >
+                    <Settings class='w-4 text-gray-500'/>
+                    <TextS>Settings</TextS>
                 </button>
                 <button
                     onclick={onLogout}
@@ -438,7 +444,7 @@
     {:else}
         <div class="grow min-h-0 relative col-span-8 border bg-white border-gray-200 rounded-lg overflow-auto scrollbar {openVercent ? 'flex items-stretch' : 'flex items-center justify-center'}">
             {#if openVercent}
-                <VerificationPanel />
+                <VerificationPanel bind:openVercent={openVercent}/>
             {:else}
                 <div class="flex flex-col items-center gap-y-2">
                     <img src="/error.gif" alt="error.gif" width="80">
@@ -458,21 +464,21 @@
         <div class="w-full flex flex-col items-stretch gap-4 overflow-auto h-full">
             <RoundedCard class='flex-1 space-y-2'>
                 <TextS class='text-gray-500'>Employment History</TextS>
-                <div class="max-h-full">
+                <div class="max-h-[calc(40dvh)] scrollbar overflow-auto">
                     {#each $user.profile.occupations as occ}
                         <button
                             onclick={async () => {
-                                selectedCareerAddress = occ.address;
-                                await onGeocodeCareerAddress();
+                                selectedCareerId = occ.id;
+                                await onGeocodeCareerAddress(occ);
                             }}
                             class={twMerge(
                                 "flex items-center gap-x-3 rounded w-full cursor-pointer p-2",
-                                selectedCareerAddress === occ.address && "bg-gray-100"
+                                selectedCareerId === occ.id && "bg-gray-100"
                             )}
                         >
                             <div class={twMerge(
                                 "w-8 h-8 rounded flex items-center justify-center",
-                                selectedCareerAddress === occ.address ? "bg-white/75" : "bg-gray-100"
+                                selectedCareerId === occ.id ? "bg-white/75" : "bg-gray-100"
                             )}>
                                 <Briefcase class='w-4 text-gray-600'/>
                             </div>
@@ -485,10 +491,10 @@
                 </div>
             </RoundedCard>
             <RoundedCard class='flex-1 p-0 flex flex-col items-stretch'>
-                {#if selectedCareerAddress}
+                {#if selectedCareerId}
                     <div class="p-2 border-b border-gray-200 flex items-center gap-x-2">
                         <MapPin class='w-4 text-gray-600'/>
-                        <TextS>{selectedCareerAddress}</TextS>
+                        <TextS>{$user.profile.occupations.find((o) => selectedCareerId === o.id).address}</TextS>
                     </div>
                     <div id="map" class="grow rounded-bl-lg rounded-br-lg flex items-center justify-center z-0">
                         {#if mapLoading}
@@ -649,3 +655,190 @@
         </RoundedCard>
     </div>
 {/if}
+
+<Modal
+    bind:show={openProfile}
+    heading='Alumni Profile'
+    class='md:w-2/3 h-full'
+>
+    <div class="flex-1 min-h-0 space-y-2 overflow-y-hidden pt-0 bg-white flex flex-col items-stretch">
+        <div class="w-full overflow-auto max-h-full scrollbar">
+            <div class="flex flex-col overflow-clip">
+                <div class="flex items-center justify-between p-4">
+                    <div class="grow flex items-center gap-x-3">
+                        <div 
+                            style={`background-image: url(${apiUrl('/Uploads/alumni/profile_picture/' + $user.profile.profile_picture)})`}
+                            class="w-10 h-10 bg-cover bg-center rounded-full border border-gray-200"
+                        ></div>
+                        <h1 class='text-xl max-w-7/10 truncate flex items gap-x-3'>{$user.profile.first_name}{$user.profile.name_extension && ' ' + $user.profile.name_extension}{$user.profile.middle_name && ' ' + $user.profile.middle_name} {$user.profile.last_name}</h1>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-y-2 p-4 border-t border-gray-100">
+                    <TextS class='text-gray-700/75'>Employment Information</TextS>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="flex flex-col items-stretch space-y-2">
+                            <TextX class='font-bold text-gray-700/80'>Status</TextX>
+                            {#if $user.profile.employment_status === 'Employed'}
+                                <span class="w-fit inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-600">
+                                    Employed
+                                </span>
+                            {:else if $user.profile.employment_status === 'Self-employed'}
+                                <span class="w-fit inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
+                                    Self-employed
+                                </span>
+                            {:else}
+                                <span class="w-fit inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-500">
+                                    Unemployed
+                                </span>
+                            {/if}
+                        </div>
+    
+                        <div class="flex flex-col items-stretch space-y-2 col-span-2">
+                            <TextX class='font-bold text-gray-700/80'>Curriculum Vitae</TextX>
+                            <button 
+                                onclick={() => {
+                                    openCvModalUrl = $user.profile.cv;
+                                    openCvModal = true;
+									console.log(true);
+                                }}
+                                class="flex items-center gap-x-2 cursor-pointer"
+                            >
+                                <Link class='text-gray-600 w-4'/>
+                                <TextS class='max-w-full truncate underline'>{$user.profile.cv}</TextS>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col items-stretch space-y-2">
+                        <div class="flex flex-col gap-y-2">
+                            <TextX class='font-bold text-gray-700/80'>Employment History</TextX>
+                            <div class="max-h-full grid md:grid-cols-3 gap-x-4">
+                                {#each $user.profile.occupations as occ}
+                                    <div class="flex items-center gap-x-3 rounded w-full p-2 border border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <div class="grow flex items-center gap-x-4">
+                                            <div class="w-8 h-8 rounded flex items-center justify-center bg-gray-100">
+                                                <Briefcase class='w-4 text-gray-600'/>
+                                            </div>
+                                            <div class="grow flex flex-col items-start">
+                                                <TextS class='max-w-full truncate'>{occ.occupation.name}</TextS>
+                                                <TextX class='text-gray-500 max-w-full truncate'>{occ.start_year} - {!occ.end_year ? 'Present' : occ.end_year} at <span class="font-bold">{occ.company}</span></TextX>
+                                            </div>
+                                        </div>
+                                        <ButtonM
+                                            Icon={MapPin}
+                                            class='px-1 py-0'
+											onclick={() => {
+												openMapModalAddress = occ.address;
+												openMapModal = true;
+											}}
+                                        />
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="flex flex-col gap-y-2 p-4 border-t border-gray-100">
+                    <TextS class='text-gray-700/75'>Personal Information</TextS>
+
+                    <div class='grid grid-cols-3 gap-4'>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>First Name</TextX>
+                            <TextS class='max-w-full truncate'>{$user.profile.first_name}{$user.profile.name_extension && ' ' + $user.profile.name_extension}</TextS>
+                        </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Middle Name</TextX>
+                            <TextS class='max-w-full truncate'>{$user.profile.middle_name ? $user.profile.middle_name : 'N/A'}</TextS>
+                        </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Last Name</TextX>
+                            <TextS class='max-w-full truncate'>{$user.profile.last_name}</TextS>
+                        </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Birth Date</TextX>
+                            <TextS class='max-w-full truncate'>{formatDate($user.profile.birth_date)}</TextS>
+                        </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Birth Place</TextX>
+                            <TextS class='max-w-full truncate'>{$user.profile.birth_place}</TextS>
+                        </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Gender</TextX>
+                            <TextS class='max-w-full truncate'>{$user.profile.gender}</TextS>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-y-2 p-4 border-t border-gray-100">
+                    <TextS class='text-gray-700/75'>Contact Information</TextS>
+
+                    <div class="space-y-4">
+                        <div class='grid grid-cols-3 gap-4'>
+                            <div class="flex flex-col items-stretch space-y-1">
+                                <TextX class='font-bold text-gray-700/80'>Email Address</TextX>
+                                <TextS class='max-w-full truncate'>{$user.profile.email}</TextS>
+                            </div>
+                            <div class="flex flex-col items-stretch space-y-1">
+                                <TextX class='font-bold text-gray-700/80'>Phone Number</TextX>
+                                <TextS class='max-w-full truncate'>{$user.profile.phone_number}</TextS>
+                            </div>
+                            <div class="flex flex-col items-stretch space-y-1">
+                                <TextX class='font-bold text-gray-700/80'>Address</TextX>
+                                <TextS class='max-w-full truncate'>{$user.profile.address}</TextS>
+                            </div>
+                            <div class="flex flex-col items-stretch space-y-1 col-span-3">
+                                <TextX class='font-bold text-gray-700/80'>Social Media:</TextX>
+                                <div class="flex flex-col gap-y-2">
+                                    {#each $user.profile.social_medias as socmed}
+                                        <a href={socmed.url} target="_blank" class="flex items-center gap-x-2">
+                                            <Link class='text-gray-600 w-4'/>
+                                            <TextS class='max-w-full truncate underline'>{socmed.platform.name}</TextS>
+                                        </a>
+                                    {/each}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-y-2 p-4 border-t border-gray-100">
+                    <TextS class='text-gray-700/75'>Education Information</TextS>
+
+                    <div class="space-y-4">
+                        <div class='grid grid-cols-3 gap-4'>
+                            <div class="flex flex-col items-stretch space-y-1">
+                                <TextX class='font-bold text-gray-700/80'>Course</TextX>
+                                <TextS class='max-w-full truncate'>{$user.profile.course.name}</TextS>
+                            </div>
+                            <div class="flex flex-col items-stretch space-y-1">
+                                <TextX class='font-bold text-gray-700/80'>Student Number</TextX>
+                                <TextS class='max-w-full truncate'>{$user.profile.student_number ? $user.profile.student_number : 'N/A'}</TextS>
+                            </div>
+                            <div class="flex flex-col items-stretch space-y-1">
+                                <TextX class='font-bold text-gray-700/80'>Batch</TextX>
+                                <TextS class='max-w-full truncate'>{$user.profile.graduation_year}</TextS>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</Modal>
+
+<Modal
+    bind:show={openCvModal}
+    heading={openCvModalUrl}
+    class='md:w-2/3 h-full'
+>
+    <iframe
+        frameborder="0"
+        title="Alumni CV"
+        src={apiUrl('/Uploads/alumni/cv/' + openCvModalUrl + '#toolbar=0&navpanes=0view=Fit')}
+        class="scrollbar grow bg-white rounded-lg overflow-clip"
+    >
+    </iframe>
+</Modal>

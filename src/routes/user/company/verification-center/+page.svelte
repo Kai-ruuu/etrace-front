@@ -1,14 +1,15 @@
 <script>
 	import ButtonM from "$lib/components/global/ButtonM.svelte";
 	import InputTextArea from "$lib/components/global/InputTextArea.svelte";
+	import Modal from "$lib/components/global/modals/Modal.svelte";
 	import TextM from "$lib/components/global/TextM.svelte";
 	import TextS from "$lib/components/global/TextS.svelte";
 	import TextX from "$lib/components/global/TextX.svelte";
 	import AdminHeader from "$lib/components/user/AdminHeader.svelte";
 	import { user } from "$lib/stores/user";
-	import { get, postJson } from "$lib/utils/api";
+	import { get, patchForm, postForm, postJson } from "$lib/utils/api";
 	import { error, formatDate, success } from "$lib/utils/ui";
-	import { AlertCircle, BadgeCheck, Calendar, CheckCircle, File, Flag, Info, Lock, MessageCircle, Send, ShieldUser, Star } from "lucide-svelte";
+	import { AlertCircle, BadgeCheck, Calendar, CheckCircle, File, Flag, Info, Lock, MessageCircle, Send, ShieldUser, Star, Upload } from "lucide-svelte";
 	import { onMount } from "svelte";
 
 	let statusSysad = $derived($user.profile.ver_stat_sysad);
@@ -22,6 +23,13 @@
 	let appealRevision = $state({ value: '', error: '' });
 
 	let revisionRequests = $state([]);
+
+	let upload = $state(null);
+    let uploadUrl = $state(null);
+    let uploadOpen = $state(false);
+	let uploadDisplay = $state(null);
+	let uploadReqId = $state(null);
+	let uploadReqKey = $state(null);
 
 	async function onSubmitSysadAppeal() {
 		if (
@@ -105,6 +113,40 @@
 				onFail: async (err) => error(err?.message ?? 'Unable to submit appeal due to an error.')
 			}
 		);
+	}
+
+	async function onUploadRevision() {
+		let formData = new FormData();
+		formData.append('requirement_key', uploadReqKey);
+		formData.append('requirement', upload);
+		
+		await postForm('/api/user/company/revise-requirement', formData, {
+			onSuccess: async (data) => {
+				uploadOpen = false;
+				URL.revokeObjectURL(uploadUrl);
+				uploadUrl = null;
+				upload = null;
+				uploadDisplay = null;
+				const input = document.getElementById(uploadReqId);
+				if (input) input.value = '';
+
+				user.set({
+					...data,
+					profile: {
+						...data.profile,
+					}
+				});
+
+				await get('/api/user/company/revision-requests', {
+					onSuccess: async (fresh) => {
+						console.log('Fresh revision requests:', fresh); // 👈 check this
+						revisionRequests = [...fresh];
+					}
+				});
+				success('Requirement has been revised.');
+			},
+			onFail: async (data) => error(data?.message ?? 'Unable to upload revision due to an error.')
+		});
 	}
 
 	function getReqKeyDisplay(key) {
@@ -396,10 +438,36 @@
 												}
 											}}
 										/>
-										<div class="flex justify-end mt-2">
+										<div class="flex items-center justify-end mt-2 gap-x-2">
+											<input
+												id={`requirement_${request.id}`}
+												type="file"
+												accept=".pdf"
+												required={true}
+												onchange={(e) => {
+													upload = e.target.files?.[0] ?? null;
+
+													if (upload) {
+														uploadDisplay = getReqKeyDisplay(request.requirement_column);
+														uploadReqKey = request.requirement_column;
+														uploadReqId = `requirement_${request.id}`;
+														uploadUrl = URL.createObjectURL(upload);
+														uploadOpen = true;
+													} else {
+														error('Something went wrong while adding the file.');
+													}
+												}}
+												class="hidden"
+											/>
+											<ButtonM
+												Icon={Upload}
+												label='Upload Revision'
+												onclick={() => document.getElementById(`requirement_${request.id}`)?.click()}
+											/>
+											<TextS>or</TextS>
 											<ButtonM
 												Icon={Send}
-												label='Submit'
+												label='Submit Appeal'
 												onclick={async () => await onSubmitRevisionAppeal(request.id)}
 											/>
 										</div>
@@ -414,7 +482,7 @@
 	{:else if statusPstaff === 'Verified'}
 		<div class="pl-5">
 			<div class="border-l border-green-200 p-4 pl-9">
-				<TextS>Complete!</TextS>
+				<TextS class='text-gray-700/50'>Complete!</TextS>
 			</div>
 		</div>
 	{:else}
@@ -542,3 +610,31 @@
 		</div>
 	{/if}
 </div>
+
+<Modal
+    bind:show={uploadOpen}
+    heading={uploadDisplay}
+    class='md:w-2/3 h-full space-y-2'
+    onExit={() => {
+		URL.revokeObjectURL(uploadUrl);
+		uploadUrl = null;
+		upload = null;
+		uploadDisplay = null;
+		const input = document.getElementById(uploadReqId);
+		
+		if (input) input.value = '';
+	}}
+>
+    <iframe
+        frameborder="0"
+        title={uploadDisplay}
+        src={uploadUrl + '#toolbar=0&navpanes=0view=Fit'}
+        class="scrollbar grow bg-white rounded-lg overflow-clip"
+    >
+    </iframe>
+    <ButtonM
+        Icon={Upload}
+        label='Update'
+		onclick={onUploadRevision}
+    />
+</Modal>

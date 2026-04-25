@@ -2,6 +2,7 @@
 	import { X } from "lucide-svelte";
 	import TextS from "./TextS.svelte";
 	import { twMerge } from "tailwind-merge";
+	import { readonly } from "svelte/store";
 
     let {
         value = $bindable(''),
@@ -19,6 +20,7 @@
         onInput = (v) => {},
         onClear = () => {},
         list = null,
+        readOnly = false,
         class: className = ''
     } = $props();
 </script>
@@ -37,6 +39,7 @@
             <input
                 {list}
                 bind:value={value}
+                readonly={readOnly}
                 placeholder={placeholder}
                 minlength={minLength}
                 maxlength={maxLength}

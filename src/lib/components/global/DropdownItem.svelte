@@ -1,11 +1,13 @@
 <script>
     let {
         label,
-        value
+        value,
+        disabled = false
     } = $props();
 </script>
 
 <option
+    {disabled}
     value={value}
 >
     {label}

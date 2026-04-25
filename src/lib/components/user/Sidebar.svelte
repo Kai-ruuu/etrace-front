@@ -1,5 +1,5 @@
 <script>
-	import { BadgeCheck, Book, Briefcase, Building2, FileUser, GraduationCap, LayoutDashboard, List, LogOut, School, User, UserLock } from "lucide-svelte";
+	import { BadgeCheck, Book, Briefcase, Building2, FileUser, GraduationCap, LayoutDashboard, List, LogOut, School, Settings, User, UserLock } from "lucide-svelte";
 	import Logo from "../global/Logo.svelte";
 	import TextM from "../global/TextM.svelte";
 	import TextX from "../global/TextX.svelte";
@@ -35,7 +35,7 @@
                 <SidebarLink Icon={Building2} label='Companies' path='/user/system-admin/manage-companies'/>
             </SidebarGroup>
             <SidebarGroup label='Settings'>
-                <SidebarLink Icon={UserLock} label='Account' path='/user/system-admin/account'/>
+                <SidebarLink Icon={Settings} label='Settings' path='/user/system-admin/settings'/>
                 <SidebarLogoutButton />
             </SidebarGroup>
         {:else if $user.role === 'dean'}
@@ -49,7 +49,7 @@
                 <SidebarLink Icon={User} label='Alumni' path='/user/dean/manage-alumni'/>
             </SidebarGroup>
             <SidebarGroup label='Settings'>
-                <SidebarLink Icon={UserLock} label='Account' path='/user/dean/account'/>
+                <SidebarLink Icon={Settings} label='Settings' path='/user/dean/settings'/>
                 <SidebarLogoutButton />
             </SidebarGroup>
         {:else if $user.role === 'pstaff'}
@@ -60,7 +60,7 @@
                 <SidebarLink Icon={User} label='Companies' path='/user/peso-staff/manage-companies'/>
             </SidebarGroup>
             <SidebarGroup label='Settings'>
-                <SidebarLink Icon={UserLock} label='Account' path='/user/peso-staff/account'/>
+                <SidebarLink Icon={Settings} label='Settings' path='/user/peso-staff/settings'/>
                 <SidebarLogoutButton />
             </SidebarGroup>
         {:else if $user.role === 'company'}
@@ -69,7 +69,7 @@
                 <SidebarLink Icon={BadgeCheck} label='Verification Center' path='/user/company/verification-center'/>
             </SidebarGroup>
             <SidebarGroup label='Settings'>
-                <SidebarLink Icon={UserLock} label='Account' path='/user/company/account'/>
+                <SidebarLink Icon={Settings} label='Settings' path='/user/company/settings'/>
                 <SidebarLogoutButton />
             </SidebarGroup>
         {/if}
