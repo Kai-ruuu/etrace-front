@@ -143,8 +143,10 @@
 
         if (val.length === 0)
             data.password.error = 'Password is required.';
-        else if (val.length > 8)
-            data.password.error = 'Occupation must not exceed 8 characters';
+        else if (val.length < 8)
+            data.password.error = 'Password must have at least 8 characters.';
+        else if (val.length > 65)
+            data.password.error = 'Password must not exceed 65 characters.';
         else
             data.password.error = '';
     }
@@ -154,8 +156,10 @@
 
         if (val.length === 0)
             data.password_confirmed.error = 'Password is required.';
-        else if (val.length > 8)
-            data.password_confirmed.error = 'Password must not exceed 8 characters';
+        else if (val.length < 8)
+            data.password_confirmed.error = 'Password must have at least 8 characters.';
+        else if (val.length > 65)
+            data.password_confirmed.error = 'Password must not exceed 65 characters.';
         else if (val !== data.password.value)
             data.password_confirmed.error = 'Password do not match.';
         else
@@ -338,6 +342,7 @@
                             showIcon={false}
                             bind:value={data.password.value}
                             bind:error={data.password.error}
+                            maxLength={65}
                             onInput={validatePassword}
                         />
                         <InputPass
@@ -345,6 +350,7 @@
                             showIcon={false}
                             bind:value={data.password_confirmed.value}
                             bind:error={data.password_confirmed.error}
+                            maxLength={65}
                             onInput={validatePasswordConfirm}
                         />
                     {/if}

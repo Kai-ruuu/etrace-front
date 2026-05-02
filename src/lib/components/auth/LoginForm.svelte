@@ -115,10 +115,10 @@
                 />
         
                 <div class='flex items-center justify-between'>
-                    <a href="/">
+                    <a href="/account/forgot-password">
                         <TextS class='text-blue-900 hover:underline'>Forgot Password</TextS>
                     </a>
-                    <a href="/resend-verification">
+                    <a href="/account/cannot-verify-email">
                         <TextS class='text-blue-900 hover:underline'>Can't verify email?</TextS>
                     </a>
                 </div>

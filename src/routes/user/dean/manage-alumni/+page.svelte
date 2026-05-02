@@ -432,6 +432,10 @@
                             <TextX class='font-bold text-gray-700/80'>Gender</TextX>
                             <TextS class='max-w-full truncate'>{openedProfile.profile.gender}</TextS>
                         </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Civil Status</TextX>
+                            <TextS class='max-w-full truncate'>{openedProfile.profile.civil_status}</TextS>
+                        </div>
                     </div>
                 </div>
 
@@ -468,7 +472,7 @@
                 </div>
 
                 <div class="flex flex-col gap-y-2 p-4 border-t border-gray-100">
-                    <TextS class='text-gray-700/75'>Education Information</TextS>
+                    <TextS class='text-gray-700/75'>Academic Information</TextS>
 
                     <div class="space-y-4">
                         <div class='grid grid-cols-3 gap-4'>

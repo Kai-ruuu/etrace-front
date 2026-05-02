@@ -1,6 +1,7 @@
 <script>
 	import { goto } from "$app/navigation";
 	import ButtonM from "$lib/components/global/ButtonM.svelte";
+	import ConfirmModal from "$lib/components/global/modals/ConfirmModal.svelte";
 	import Modal from "$lib/components/global/modals/Modal.svelte";
 	import RoundedCard from "$lib/components/global/RoundedCard.svelte";
 	import SidebarLink from "$lib/components/global/SidebarLink.svelte";
@@ -50,6 +51,9 @@
     let openProfile = $state(false);
     let openCvModal = $state(false);
     let openCvModalUrl = $state(null);
+
+    let openCvSubmitConfirmModal = $state(false);
+    let openedCvSubmitPostId = $state(null);
 
     async function fetchPage(page, append = false) {
         if (isFetching) return;
@@ -105,28 +109,65 @@
 
     async function onLike(id) {
         await postJson('/api/job-post-like/' + id, null, {
-            onSuccess: async (_data) => data.results = [...data.results.map((p) => ({ ...p, likes: p.likes + 1, is_liked: true }))],
+            onSuccess: async (_data) => {
+                data.results = [...data.results.map((p) => {
+                    if (p.id !== id)
+                        return p;
+                    
+                    return { ...p, likes: p.likes + 1, is_liked: true };
+                })];
+            },
             onFail: async (err) => error(err?.message ?? 'Unable to like post due to an error.')
         });
     }
 
     async function onDisike(id) {
         await deleteJson('/api/job-post-like/' + id, null, {
-            onSuccess: async (_data) => data.results = [...data.results.map((p) => ({ ...p, likes: p.likes - 1, is_liked: false }))],
+            onSuccess: async (_data) => {
+                data.results = [...data.results.map((p) => {
+                    if (p.id !== id)
+                        return p;
+                    
+                    return { ...p, likes: p.likes - 1, is_liked: false };
+                })];
+
+                likes = [...likes.filter((l) => l.post.id !== id)];
+            },
             onFail: async (err) => error(err?.message ?? 'Unable to dislike post due to an error.')
         });
     }
 
     async function onSubmitCv(id) {
         await postJson('/api/job-post-submission/' + id, null, {
-            onSuccess: async (_data) => data.results = [...data.results.map((p) => ({ ...p, submissions: p.submissions + 1, is_submitted: true }))],
+            onSuccess: async (_data) => {
+                data.results = [...data.results.map((p) => {
+                    if (p.id !== id)
+                        return p;
+
+                    return { ...p, submissions: p.submissions + 1, is_submitted: true };
+                })];
+                openCvSubmitConfirmModal = false;
+                openedCvSubmitPostId = null;
+                success("CV submitted.");
+            },
             onFail: async (err) => error(err?.message ?? 'Unable to submit CV due to an error.')
         });
     }
 
     async function onUnsubmitCv(id) {
         await deleteJson('/api/job-post-submission/' + id, null, {
-            onSuccess: async (_data) => data.results = [...data.results.map((p) => ({ ...p, submissions: p.submissions - 1, is_submitted: false }))],
+            onSuccess: async (_data) => {
+                data.results = [...data.results.map((p) => {
+                    if (p.id !== id)
+                        return p;
+                    
+                    return { ...p, submissions: p.submissions - 1, is_submitted: false };
+                })];
+
+                submissions = [...submissions.filter((s) => s.post.id !== id)];
+
+                success("CV unsubmitted.");
+            },
             onFail: async (err) => error(err?.message ?? 'Unable to unsubmit CV due to an error.')
         });
     }
@@ -420,7 +461,10 @@
                                     </button>
                                 {:else}
                                     <button
-                                        onclick={async () => await onSubmitCv(post.id)}
+                                        onclick={() => {
+                                            openCvSubmitConfirmModal = true;
+                                            openedCvSubmitPostId = post.id;
+                                        }}
                                         class="text-xs px-3 py-1 rounded border transition-colors cursor-pointer border-green-100 text-green-500 hover:bg-green-50"
                                     >
                                         Submit CV
@@ -517,25 +561,33 @@
     class='md:w-2/5 h-full'
 >
     {#each submissions as sub}
-        <div class="flex items-center border border-gray-100 hover:bg-gray-100 transition-colors p-4 rounded">
-            <div class="flex items-center gap-x-3 grow">
+        <div class="flex items-center justify-between border border-gray-100 p-4 rounded">
+            <div class="flex items-center gap-x-3 max-w-2/3">
                 <div 
                     style={`background-image: url(${apiUrl('/Uploads/company/logo/' + sub.post.company.logo)})`}
-                    class="w-8 h-8 bg-cover bg-center rounded-full border border-gray-200"
+                    class="min-w-8 min-h-8 bg-cover bg-center rounded-full border border-gray-200"
                 ></div>
-                <div class="flex flex-col">
-                    <TextM class='max-w-full truncate'>{sub.post.company.name} - Looking for {sub.post.position}</TextM>
+                <div class="flex flex-col items-stretch w-4/5">
+                    <TextS class='truncate'>{sub.post.company.name} - Looking for {sub.post.position}</TextS>
                     <TextX>{formatDate(sub.post.created_at)}</TextX>
                 </div>
             </div>
-            <ButtonM
-                Icon={Info}
-                class='px-1 py-0'
-                onclick={() => {
-                    post = sub.post;
-                    openPost = true;
-                }}
-            />
+            <div class="flex items-center gap-x-2">
+                <button
+                    onclick={async () => await onUnsubmitCv(sub.post.id)}
+                    class="text-nowrap text-xs px-3 py-1 rounded border transition-colors cursor-pointer border-red-100 text-red-500 hover:bg-red-50"
+                >
+                    Unsubmit CV
+                </button>
+                <ButtonM
+                    Icon={Info}
+                    class='px-1 py-0'
+                    onclick={() => {
+                        post = sub.post;
+                        openPost = true;
+                    }}
+                />
+            </div>
         </div>
     {/each}
 </Modal>
@@ -546,25 +598,33 @@
     class='md:w-2/5 h-full'
 >
     {#each likes as like}
-        <div class="flex items-center border border-gray-100 hover:bg-gray-100 transition-colors p-4 rounded">
-            <div class="flex items-center gap-x-3 grow">
+        <div class="flex items-center justify-between border border-gray-100 p-4 rounded">
+            <div class="flex items-center gap-x-3 max-w-2/3">
                 <div 
                     style={`background-image: url(${apiUrl('/Uploads/company/logo/' + like.post.company.logo)})`}
-                    class="w-8 h-8 bg-cover bg-center rounded-full border border-gray-200"
+                    class="min-w-8 min-h-8 bg-cover bg-center rounded-full border border-gray-200"
                 ></div>
-                <div class="flex flex-col">
-                    <TextM class='max-w-full truncate'>{like.post.company.name} - Looking for {like.post.position}</TextM>
+                <div class="flex flex-col items-stretch w-4/5">
+                    <TextS class='truncate'>{like.post.company.name} - Looking for {like.post.position}</TextS>
                     <TextX>{formatDate(like.post.created_at)}</TextX>
                 </div>
             </div>
-            <ButtonM
-                Icon={Info}
-                class='px-1 py-0'
-                onclick={() => {
-                    post = like.post;
-                    openPost = true;
-                }}
-            />
+            <div class="flex items-center gap-x-2">
+                <button
+                    onclick={async () => await onDisike(like.post.id)}
+                    class="text-nowrap text-xs px-3 py-1 rounded border transition-colors cursor-pointer border-red-100 text-red-500 hover:bg-red-50"
+                >
+                    Dislike
+                </button>
+                <ButtonM
+                    Icon={Info}
+                    class='px-1 py-0'
+                    onclick={() => {
+                        post = like.post;
+                        openPost = true;
+                    }}
+                />
+            </div>
         </div>
     {/each}
 </Modal>
@@ -769,6 +829,10 @@
                             <TextX class='font-bold text-gray-700/80'>Gender</TextX>
                             <TextS class='max-w-full truncate'>{$user.profile.gender}</TextS>
                         </div>
+                        <div class="flex flex-col items-stretch space-y-1">
+                            <TextX class='font-bold text-gray-700/80'>Civil Status</TextX>
+                            <TextS class='max-w-full truncate'>{$user.profile.civil_status}</TextS>
+                        </div>
                     </div>
                 </div>
 
@@ -779,7 +843,7 @@
                         <div class='grid grid-cols-3 gap-4'>
                             <div class="flex flex-col items-stretch space-y-1">
                                 <TextX class='font-bold text-gray-700/80'>Email Address</TextX>
-                                <TextS class='max-w-full truncate'>{$user.profile.email}</TextS>
+                                <TextS class='max-w-full truncate'>{$user.email}</TextS>
                             </div>
                             <div class="flex flex-col items-stretch space-y-1">
                                 <TextX class='font-bold text-gray-700/80'>Phone Number</TextX>
@@ -805,7 +869,7 @@
                 </div>
 
                 <div class="flex flex-col gap-y-2 p-4 border-t border-gray-100">
-                    <TextS class='text-gray-700/75'>Education Information</TextS>
+                    <TextS class='text-gray-700/75'>Academic Information</TextS>
 
                     <div class="space-y-4">
                         <div class='grid grid-cols-3 gap-4'>
@@ -828,6 +892,14 @@
         </div>
     </div>
 </Modal>
+
+<ConfirmModal
+    show={openCvSubmitConfirmModal}
+    heading="Submit your CV to this post?"
+    class="md:w-2/5"
+    onConfirm={async () => await onSubmitCv(openedCvSubmitPostId)}
+    text="By submitting your CV, you acknowledge that the application review process is conducted at the company's discretion. If your qualifications align with the position, the company may contact you directly via email or phone. Please note that submission does not guarantee an interview or an immediate response. You may withdraw your application only if it has not yet been reviewed."
+/>
 
 <Modal
     bind:show={openCvModal}

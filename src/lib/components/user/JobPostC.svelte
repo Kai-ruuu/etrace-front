@@ -44,6 +44,7 @@
     async function onClose() {
         await patchJson('/api/job-post/close/' + post.id, null, {
             onSuccess: async (data) => {
+                confirmClose = false;
                 await onSearch();
                 success('Job post has been closed.');
             },
@@ -79,6 +80,7 @@
             { open_until: openUntil.value },
             {
                 onSuccess: async (data) => {
+                    confirmRepost = false;
                     await onSearch();
                     success('Job post has been reposted.');
                 },
