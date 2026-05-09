@@ -1,137 +1,161 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { Chart, registerables } from 'chart.js';
   import { jsPDF } from 'jspdf';
   import { toPng } from 'html-to-image';
-  import TextM from '$lib/components/global/TextM.svelte';
   import DashboardHeader from '$lib/components/user/DashboardHeader.svelte';
+  import { get } from '$lib/utils/api';
+  import { error } from '$lib/utils/ui';
+
   Chart.register(...registerables);
 
-  // ─── Company Metrics ────────────────────────────────────────
-  const summaryCards = [
-    { label: 'Total Companies', total: 214, sub: 'All entries', color: 'text-blue-900' },
-    { label: 'Active',          total: 178, sub: 'Currently Posting', color: 'text-teal-600' },
-    { label: 'Inactive',        total: 36,  sub: 'No activity', color: 'text-gray-400' },
-  ];
+  let summaryCards = $state([
+    { label: 'Total Companies', total: 0, sub: 'All entries',        color: 'text-blue-900' },
+    { label: 'Active',          total: 0, sub: 'Currently enabled',  color: 'text-teal-600' },
+    { label: 'Inactive',        total: 0, sub: 'Currently disabled', color: 'text-gray-400' },
+  ]);
 
-  const industries = [
-    'Technology / IT', 'Finance / Banking / Insurance', 'Healthcare / Pharmaceuticals',
-    'Education / Research', 'Manufacturing / Industrial', 'Retail / E-commerce',
-    'Food & Beverage / Hospitality', 'Transportation / Logistics', 'Energy / Utilities',
-    'Media / Entertainment / Advertising', 'Government / Public Sector',
-    'Real Estate / Construction', 'Consulting / Professional Services', 'Nonprofit / NGO',
-    'Telecommunications'
-  ];
+  const B = {
+    900: '#042c53', 800: '#0c447c', 700: '#185fa5',
+    500: '#378add', 300: '#85b7eb', 200: '#b5d4f4', 100: '#e6f1fb',
+  };
 
-  // Distribution based on total
-  const companiesPerIndustry = [35, 12, 8, 22, 18, 14, 25, 10, 5, 9, 15, 20, 11, 4, 6];
-
-  // ─── Colors ──────────────────────────────────────────────────
-  const B = { 900: '#042c53', 800: '#0c447c', 700: '#185fa5', 500: '#378add', 300: '#85b7eb' };
-  const RED = '#E24B4A';
-  const AMBER = '#BA7517';
-  const TEAL = '#1D9E75';
+  let companyIndustryStatus  = $state(null);
+  let companyVerStatus       = $state(null);
 
   let companyDonutCanvas;
   let industryBarCanvas;
 
-	let isExporting = $state(false);
-  
-	async function exportToPDF() {
-		isExporting = true;
-		const element = document.getElementById('dashboard-content');
+  let isExporting = $state(false);
 
-		// 1. Get the actual full height of the scrollable content
-		const originalStyle = element.style.cssText;
-		
-		try {
-			// 2. Temporarily expand the element so all children are "visible"
-			// We remove the height constraints just for the capture
-			const dataUrl = await toPng(element, {
-			height: element.scrollHeight,
-			width: element.scrollWidth,
-			style: {
-				overflow: 'visible',
-				maxHeight: 'none',
-				height: 'auto'
-			},
-			// 3. Optional: Add a slight delay to ensure Chart.js animations are finished
-			cacheBust: true,
-			});
+  let companyDonutChart    = null;
+  let companyIndustryChart = null;
 
-			const pdf = new jsPDF('p', 'mm', 'a4');
-			const pdfWidth = pdf.internal.pageSize.getWidth();
-			const pdfHeight = pdf.internal.pageSize.getHeight();
-			
-			// Calculate how many pages we need (if the dashboard is very long)
-			const imgProps = pdf.getImageProperties(dataUrl);
-			const imgHeightInMm = (imgProps.height * pdfWidth) / imgProps.width;
-			
-			let heightLeft = imgHeightInMm;
-			let position = 0;
+  async function exportToPDF() {
+    isExporting = true;
+    const element = document.getElementById('dashboard-content');
 
-			// Add first page
-			pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeightInMm);
-			heightLeft -= pdfHeight;
+    try {
+      const dataUrl = await toPng(element, {
+        height: element.scrollHeight,
+        width: element.scrollWidth,
+        style: { overflow: 'visible', maxHeight: 'none', height: 'auto' },
+        cacheBust: true,
+      });
 
-			// 4. Handle Multi-page PDF if content is longer than one A4
-			while (heightLeft > 0) {
-			position = heightLeft - imgHeightInMm;
-			pdf.addPage();
-			pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeightInMm);
-			heightLeft -= pdfHeight;
-			}
+      const pdf       = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth  = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgProps  = pdf.getImageProperties(dataUrl);
+      const imgHeightInMm = (imgProps.height * pdfWidth) / imgProps.width;
 
-			pdf.save(`Dashboard_Report.pdf`);
-		} catch (error) {
-			console.error('Export failed:', error);
-		} finally {
-			isExporting = false;
-		}
-		}
+      let heightLeft = imgHeightInMm;
+      let position   = 0;
 
-  onMount(() => {
-    // Status Donut
-    new Chart(companyDonutCanvas, {
-      type: 'doughnut',
-      data: {
-        labels: ['Verified', 'Pending', 'Rejected'],
-        datasets: [{
-          data: [89, 85, 40],
-          backgroundColor: [TEAL, AMBER, RED],
-          borderWidth: 0,
-        }],
+      pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeightInMm);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeightInMm;
+        pdf.addPage();
+        pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeightInMm);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save('Dashboard_Report.pdf');
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      isExporting = false;
+    }
+  }
+
+  async function getSummaries() {
+    await get('/api/stats/summaries', {
+      onSuccess: async (data) => {
+        summaryCards = summaryCards.map((card) => {
+          if (card.label === 'Total Companies')
+            return { ...card, total: data.company.total };
+          else if (card.label === 'Active')
+            return { ...card, total: data.company.active };
+          else
+            return { ...card, total: data.company.inactive };
+        });
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '75%',
-        plugins: { legend: { display: false } },
-      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch summaries due to an error.')
     });
+  }
 
-    // Industry Bar
-    new Chart(industryBarCanvas, {
-      type: 'bar',
-      data: {
-        labels: industries,
-        datasets: [{
-          data: companiesPerIndustry,
-          backgroundColor: B[700],
-          borderRadius: 4,
-        }],
+  async function getCompanyIndustryAnalytics(active = null) {
+    companyIndustryChart?.destroy();
+
+    await get(`/api/stats/company/industry-analytics?active=${active}`, {
+      onSuccess: async (data) => {
+        companyIndustryChart = new Chart(industryBarCanvas, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(data),
+            datasets: [{
+              data: Object.values(data),
+              backgroundColor: B[900],
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+              y: { ticks: { font: { size: 9 }, autoSkip: false } },
+            },
+          },
+        });
       },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: { ticks: { font: { size: 9 }, autoSkip: false } },
-        },
-      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch company industry analytics due to an error.')
     });
+  }
+
+  async function getCompanyVerificationAnalytics(active = null) {
+    companyDonutChart?.destroy();
+
+    await get(`/api/stats/company/ver-analytics?active=${active}`, {
+      onSuccess: async (data) => {
+        companyDonutChart = new Chart(companyDonutCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Verified', 'Pending', 'Rejected'],
+            datasets: [{
+              data: [data.fully_verified, data.sysad_pending + data.pstaff_pending, data.sysad_rejected + data.pstaff_rejected],
+              backgroundColor: [B[900], B[500], B[700]],
+              borderWidth: 2,
+              borderColor: 'transparent',
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: { legend: { display: false } },
+          },
+        });
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch company verification analytics due to an error.')
+    });
+  }
+
+  onMount(async () => {
+    await Promise.all([
+      getSummaries(),
+      getCompanyIndustryAnalytics(),
+      getCompanyVerificationAnalytics(),
+    ]);
+  });
+
+  onDestroy(() => {
+    companyIndustryChart?.destroy();
+    companyDonutChart?.destroy();
   });
 </script>
 
@@ -141,7 +165,7 @@
 />
 
 <div id="dashboard-content" class="max-h-dvh overflow-auto scrollbar space-y-8 px-8 pb-10">
-  
+
   <section class="mt-6">
     <h2 class="text-xs font-medium uppercase tracking-widest text-gray-400 mb-3">Company Summary</h2>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -159,39 +183,46 @@
     <div class="lg:col-span-3 bg-white border border-gray-200 rounded-xl p-5">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400">Companies per Industry</h3>
-        <span class="text-[10px] text-gray-400">Sorted by Volume</span>
+        <select
+          bind:value={companyIndustryStatus}
+          onchange={async (e) => await getCompanyIndustryAnalytics(e.target.value)}
+          class="py-1 rounded border border-gray-200 text-sm"
+        >
+          <option value={null}>Overall</option>
+          <option value={true}>Active</option>
+          <option value={false}>Inactive</option>
+        </select>
       </div>
-      <div class="relative h-[450px]">
+      <div class="relative h-112.5">
         <canvas bind:this={industryBarCanvas}></canvas>
       </div>
     </div>
 
     <div class="lg:col-span-2 space-y-4">
       <div class="bg-white border border-gray-200 rounded-xl p-5">
-        <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 mb-4">Verification Spread</h3>
-        <div class="relative h-56">
-          <canvas bind:this={companyDonutCanvas}></canvas>
-          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span class="text-2xl font-bold text-blue-900">214</span>
-            <span class="text-[10px] text-gray-400 uppercase">Total Entries</span>
-          </div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400">Verification Spread</h3>
+          <select
+            bind:value={companyVerStatus}
+            onchange={async (e) => await getCompanyVerificationAnalytics(e.target.value)}
+            class="py-1 rounded border border-gray-200 text-sm"
+          >
+            <option value={null}>Overall</option>
+            <option value={true}>Active</option>
+            <option value={false}>Inactive</option>
+          </select>
         </div>
-        <div class="mt-4 grid grid-cols-3 gap-2 text-center border-t border-gray-50 pt-4">
-            <div>
-                <p class="text-xs font-bold text-teal-600">89</p>
-                <p class="text-[9px] text-gray-400 uppercase">Verified</p>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-amber-600">85</p>
-                <p class="text-[9px] text-gray-400 uppercase">Pending</p>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-red-500">40</p>
-                <p class="text-[9px] text-gray-400 uppercase">Rejected</p>
-            </div>
+        <div class="flex gap-3 mb-3 text-xs text-gray-500">
+          {#each [['Verified', B[900]], ['Pending', B[500]], ['Rejected', B[700]]] as [l, c]}
+            <span class="flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
+            </span>
+          {/each}
+        </div>
+        <div class="relative h-48">
+          <canvas bind:this={companyDonutCanvas}></canvas>
         </div>
       </div>
-
     </div>
   </div>
 </div>

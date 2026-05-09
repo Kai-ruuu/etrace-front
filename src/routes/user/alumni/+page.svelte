@@ -532,6 +532,11 @@
                             </div>
                         </button>
                     {/each}
+                    {#if $user.profile.occupations.length === 0}
+                        <div class="min-h-[calc(40dvh)] w-full flex items-center justify-center">
+                            <TextS>No employment history yet.</TextS>
+                        </div>
+                    {/if}
                 </div>
             </RoundedCard>
             <RoundedCard class='flex-1 p-0 flex flex-col items-stretch'>
@@ -549,6 +554,12 @@
                             {/if}
                         {/if}
                     </div>
+                {:else}
+                    {#if $user.profile.occupations.length === 0}
+                        <div class="w-full h-full flex items-center justify-center">
+                            <TextS>No occupation address to show.</TextS>
+                        </div>
+                    {/if}
                 {/if}
             </RoundedCard>
         </div>
@@ -796,6 +807,9 @@
                                         />
                                     </div>
                                 {/each}
+                                {#if $user.profile.occupations.length === 0}
+                                    <TextS>No employment history yet.</TextS>
+                                {/if}
                             </div>
                         </div>
                     </div>

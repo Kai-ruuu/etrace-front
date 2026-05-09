@@ -756,6 +756,9 @@
                                         />
                                     </div>
                                 {/each}
+								{#if openedProfile.profile.occupations.length === 0}
+                                    <TextS>No employment history yet.</TextS>
+                                {/if}
                             </div>
                         </div>
                     </div>

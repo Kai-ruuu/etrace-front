@@ -1,109 +1,55 @@
 <script>
-  import { onMount, onDestroy, untrack } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { Chart, registerables } from 'chart.js';
   import { jsPDF } from 'jspdf';
   import { toPng } from 'html-to-image';
-    import TextM from '$lib/components/global/TextM.svelte';
-    import DashboardHeader from '$lib/components/user/DashboardHeader.svelte';
+  import DashboardHeader from '$lib/components/user/DashboardHeader.svelte';
+	import { get } from '$lib/utils/api';
+	import { user } from '$lib/stores/user';
+	import { error } from '$lib/utils/ui';
   
   Chart.register(...registerables);
 
-  // ─── Mock Data ───────────────────────────────────────────────
-  const users = [
-    { label: 'System Admins', total: 8,    active: 7,    inactive: 1   },
-    { label: 'Deans',         total: 12,   active: 10,   inactive: 2   },
-    { label: 'PESO Staffs',   total: 18,   active: 15,   inactive: 3   },
-    { label: 'Companies',     total: 214,  active: 178,  inactive: 36  },
-    { label: 'Alumni',        total: 3480, active: 2941, inactive: 539 },
-  ];
+  let users = $state([
+    { label: 'System Admins', total: 0,    active: 7,    inactive: 1   },
+    { label: 'Deans',         total: 0,   active: 10,   inactive: 2   },
+    { label: 'PESO Staffs',   total: 0,   active: 15,   inactive: 3   },
+    { label: 'Companies',     total: 0,  active: 178,  inactive: 36  },
+    { label: 'Alumni',        total: 0, active: 2941, inactive: 539 },
+  ]);
 
-  const courses = [
-    { code: 'BSCS',   name: 'BS Computer Science'         },
-    { code: 'BSIT',   name: 'BS Information Technology'   },
-    { code: 'BSE-E',  name: 'BSEd English'                },
-    { code: 'BSE-F',  name: 'BSEd Filipino'               },
-    { code: 'BSE-M',  name: 'BSEd Mathematics'            },
-    { code: 'BSE-Sc', name: 'BSEd Science'                },
-    { code: 'BSE-Ss', name: 'BSEd Social Studies'         },
-  ];
-
-  const alumniPerCourse = [420, 510, 280, 190, 310, 260, 240];
-
-  // Company verification
-  const companyVerification = {
-    fullyVerified: 89,
-    rejectedByAdmin: 22,
-    rejectedByPESO: 18,
-    pendingAdmin: 45,
-    pendingPESO: 40,
-  };
-
-  // Alumni verification
-  const alumniVerification = { verified: 2100, rejected: 380, pending: 1000 };
-
-  // Employment data per batch year
   const currentYear = new Date().getFullYear();
-  const years = ['Overall', ...Array.from({ length: currentYear - 2007 + 1 }, (_, i) => String(2007 + i))];
+  const years = [...Array.from({ length: currentYear - 2007 + 1 }, (_, i) => String(2007 + i))];
 
-  function randInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  const batchData = {};
-  years.forEach(y => {
-    const total = y === 'Overall' ? 3480 : randInt(60, 220);
-    const emp   = Math.round(total * (Math.random() * 0.2  + 0.45));
-    const self  = Math.round(total * (Math.random() * 0.1  + 0.1));
-    const dec   = Math.round(total * (Math.random() * 0.02 + 0.01));
-    const unemp = Math.max(0, total - emp - self - dec);
-    batchData[y] = { employed: emp, selfEmployed: self, unemployed: unemp, deceased: dec };
-  });
-
-  // Course-aligned employment
-  const alignedData = courses.map((_, i) => {
-    const emp     = Math.round(alumniPerCourse[i] * (Math.random() * 0.15 + 0.4));
-    const aligned = Math.round(emp * (Math.random() * 0.3 + 0.45));
-    return { aligned, notAligned: emp - aligned };
-  });
-
-  // ─── Colors ──────────────────────────────────────────────────
   const B = {
     900: '#042c53', 800: '#0c447c', 700: '#185fa5',
     500: '#378add', 300: '#85b7eb', 200: '#b5d4f4', 100: '#e6f1fb',
   };
-  const TEAL   = '#1D9E75';
-  const CORAL  = '#D85A30';
-  const RED    = '#E24B4A';
-  const AMBER  = '#BA7517';
 
-  // ─── State ───────────────────────────────────────────────────
-  let selectedYear = $state('Overall');
-  let empChartInstance = null;
-
-  // ─── Canvas refs ─────────────────────────────────────────────
-  let companyDonutCanvas;
+  let companyStatus = $state(null);
+  let companyIndustryStatus = $state(null);
+  let alumniStatus = $state(null);
+  let alumniCountStatus = $state(null);
+  let alumniEmpAnalyticsStatus = $state(null);
+  let selectedYearEmpAnalytics = $state(null);
+  let alumniEmpAlignmentStatus = $state(null);
+  let selectedYearEmpAlignment = $state(null);
+  
+  let industryBarCanvas;
   let companyPipelineCanvas;
   let alumniStatusCanvas;
   let courseChartCanvas;
   let empChartCanvas;
   let alignedChartCanvas;
 
-  // ─── Chart helpers ───────────────────────────────────────────
-  function makeDonut(canvas, labels, data, colors) {
-    return new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: 'transparent', hoverOffset: 6 }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: { legend: { display: false } },
-      },
-    });
-  }
+  let isExporting = $state(false);
+
+  let companyIndustryChart = null;
+  let companyPipelineChart = null;
+  let alumniPipelineChart = null;
+  let alumniPerCourseGraph = null;
+  let alumniEmpStatuesGraph = null;
+  let alumniAlignedCourseGraph = null;
 
   function makeBar(canvas, labels, datasets, options = {}) {
     return new Chart(canvas, {
@@ -115,36 +61,16 @@
         plugins: { legend: { display: false } },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 11 } }, ...(options.xStacked ? { stacked: true } : {}) },
-          y: { ticks: { font: { size: 10 } }, ...(options.yStacked ? { stacked: true } : {}) },
+          y: { ticks: { font: { size: 10 } }, ...(options.yStacked ? { stacked: true } : {}), ...(options.total != null ? { max: options.total } : {}) },
         },
         ...options.extra,
       },
     });
   }
 
-  function buildEmpChart() {
-    if (empChartInstance) empChartInstance.destroy();
-    const d = batchData[selectedYear];
-    empChartInstance = makeBar(
-      empChartCanvas,
-      ['Employed', 'Self-employed', 'Unemployed', 'Deceased'],
-      [{
-        data: [d.employed, d.selfEmployed, d.unemployed, d.deceased],
-        backgroundColor: [B[800], B[500], TEAL, '#888780'],
-        borderRadius: 4,
-        borderSkipped: false,
-      }],
-    );
-  }
-
-  let isExporting = $state(false);
-
   async function exportToPDF() {
     isExporting = true;
     const element = document.getElementById('dashboard-content');
-
-    // 1. Get the actual full height of the scrollable content
-    const originalStyle = element.style.cssText;
     
     try {
         // 2. Temporarily expand the element so all children are "visible"
@@ -190,76 +116,234 @@
     } finally {
         isExporting = false;
     }
-    }
+  }
 
-  // ─── Lifecycle ───────────────────────────────────────────────
-  onMount(() => {
-    // Company donut
-    makeDonut(
-      companyDonutCanvas,
-      ['Fully verified', 'Rejected by admin', 'Rejected by PESO', 'Pending (admin)', 'Pending (PESO)'],
-      Object.values(companyVerification),
-      [B[800], RED, CORAL, AMBER, B[300]],
-    );
+  function getBluePalette(count) {
+    const shades = [B[900], B[800], B[700], B[500], B[300], B[200], B[100]];
+    if (count <= shades.length) return shades.slice(0, count);
 
-    // Company pipeline
-    makeBar(
-      companyPipelineCanvas,
-      ['Submitted', 'Admin verified', 'PESO verified', 'Admin rejected', 'PESO rejected'],
-      [{
-        data: [214, 129, 89, 22, 18],
-        backgroundColor: [B[500], B[700], B[900], CORAL, RED],
-        borderRadius: 4,
-        borderSkipped: false,
-      }],
-      { extra: { scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } }, y: { ticks: { font: { size: 10 } } } } } },
-    );
-
-    // Alumni status pie
-    new Chart(alumniStatusCanvas, {
-      type: 'pie',
-      data: {
-        labels: ['Verified', 'Rejected', 'Pending'],
-        datasets: [{ data: Object.values(alumniVerification), backgroundColor: [TEAL, RED, AMBER], borderWidth: 2, borderColor: 'transparent' }],
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+    return Array.from({ length: count }, (_, i) => {
+      const t = i / (count - 1);
+      const r = Math.round(4   + t * (230 - 4));
+      const g = Math.round(44  + t * (241 - 44));
+      const b = Math.round(83  + t * (251 - 83));
+      return `rgb(${r},${g},${b})`;
     });
+  }
 
-    // Course bar
-    makeBar(
-      courseChartCanvas,
-      courses.map(c => c.code),
-      [{
-        data: alumniPerCourse,
-        backgroundColor: [B[900], B[800], B[700], B[500], B[300], B[200], B[100]],
-        borderRadius: 4,
-        borderSkipped: false,
-      }],
-    );
+  async function getSummaries() {
+    await get('/api/stats/summaries', {
+      onSuccess: async (data) => {
+        users = users.map((user) => {
+          if (user.label === 'System Admins') 
+            return { ...user, total: data.sysad.total, active: data.sysad.active, inactive: data.sysad.inactive };
+          else if (user.label === 'Deans') 
+            return { ...user, total: data.dean.total, active: data.dean.active, inactive: data.dean.inactive };
+          else if (user.label === 'PESO Staffs') 
+            return { ...user, total: data.pstaff.total, active: data.pstaff.active, inactive: data.pstaff.inactive };
+          else if (user.label === 'Companies') 
+            return { ...user, total: data.company.total, active: data.company.active, inactive: data.company.inactive };
+          else
+            return { ...user, total: data.alumni.total, active: data.alumni.active, inactive: data.alumni.inactive };
+        });
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch summaries due to an error.')
+    });
+  }
 
-    // Employment
-    buildEmpChart();
+  async function getCompanyIndustryAnalytics(active = null) {
+    companyIndustryChart?.destroy();
 
-    // Aligned stacked bar
-    makeBar(
-      alignedChartCanvas,
-      courses.map(c => c.code),
-      [
-        { label: 'Aligned',     data: alignedData.map(d => d.aligned),    backgroundColor: B[800], borderRadius: 4, borderSkipped: false },
-        { label: 'Not aligned', data: alignedData.map(d => d.notAligned), backgroundColor: B[300], borderRadius: 4, borderSkipped: false },
-      ],
-      { xStacked: true, yStacked: true },
-    );
+    await get(`/api/stats/company/industry-analytics?active=${active}`, {
+      onSuccess: async (data) => {
+        companyIndustryChart = new Chart(industryBarCanvas, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(data),
+            datasets: [{
+              data: Object.values(data),
+              backgroundColor: B[900],
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+              y: { ticks: { font: { size: 10 }, autoSkip: false } },
+            },
+          },
+        });
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch company industry analytics due to an error.')
+    });
+  }
+
+  async function getCompanyVerificaitonAnalytics(active = null) {
+    companyPipelineChart?.destroy();
+    
+    await get(`/api/stats/company/ver-analytics?active=${active}`, {
+      onSuccess: async (data) => {
+        companyPipelineChart = makeBar(
+          companyPipelineCanvas,
+          ['Fully Verified', 'System Admin. Pending', 'PESO Staff Pending', 'System Admin. Rejected', 'PESO Staff Rejected'],
+          [{
+            data: [data.fully_verified, data.sysad_pending, data.pstaff_pending, data.sysad_rejected, data.pstaff_rejected],
+            backgroundColor: [B[900], B[700], B[500], B[300], B[100]],
+            borderRadius: 4,
+            borderSkipped: false,
+          }],
+          {
+            extra: {
+              scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } },
+                y: { ticks: { font: { size: 10 } }, max: data.total },
+              }
+            },
+          },
+        );
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch company verification analytics due to an error.')
+    });
+  }
+
+  async function getAlumniVerificationAnalytics(active = null) {
+    alumniPipelineChart?.destroy();
+    
+    await get(`/api/stats/alumni/ver-analytics?active=${active}`, {
+      onSuccess: async (data) => {
+        alumniPipelineChart = new Chart(alumniStatusCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Verified', 'Rejected', 'Pending'],
+            datasets: [{
+              data: [data.verified, data.rejected, data.pending],
+              backgroundColor: [B[900], B[700], B[500]],
+              borderWidth: 2,
+              borderColor: 'transparent'
+            }],
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } },
+        });
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch alumni verification analytics due to an error.')
+    });
+  }
+
+  async function getAlumniCountByCourseAnalytics(active = null) {
+    alumniPerCourseGraph?.destroy();
+    
+    await get(`/api/stats/alumni/count-by-course?active=${active}`, {
+      onSuccess: async (data) => {
+        alumniPerCourseGraph = makeBar(
+          courseChartCanvas,
+          data.courses.map(c => c.code),
+          [{
+            data: data.counts,
+            backgroundColor: getBluePalette(data.counts.length),
+            borderRadius: 4,
+            borderSkipped: false,
+          }],
+        );
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch alumni count by course analytics due to an error.')
+    });
+  }
+
+  async function getAlumniEmploymentAnalytics(batch = null, active = alumniEmpAnalyticsStatus) {
+    alumniEmpStatuesGraph?.destroy();
+
+    await get(`/api/stats/alumni/emp-analytics?active=${active}&batch=${batch}`, {
+      onSuccess: async (data) => {
+        alumniEmpStatuesGraph = makeBar(
+          empChartCanvas,
+          ['Employed', 'Self-employed', 'Unemployed', 'Deceased'],
+          [{
+            data: [data.employed, data.self_employed, data.unemployed, data.deceased],
+            backgroundColor: [B[900], B[700], B[500], B[300]],
+            borderRadius: 4,
+            borderSkipped: false,
+          }],
+        );
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch summaries due to an error.')
+    });
+  }
+
+  async function getAlumniAlignmentAnalytics(batch = null, active = alumniEmpAlignmentStatus) {
+    alumniAlignedCourseGraph?.destroy();
+
+    await get(`/api/stats/alumni/alg-analytics?active=${active}&batch=${batch}`, {
+      onSuccess: async (data) => {
+        const labels     = Object.keys(data?.aligned     ?? {});
+        const aligned    = Object.values(data?.aligned    ?? {});
+        const notAligned = Object.values(data?.not_aligned ?? {});
+
+        alumniAlignedCourseGraph = new Chart(alignedChartCanvas, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Aligned',
+                data: aligned,
+                borderColor: B[900],
+                backgroundColor: B[900] + '22',
+                pointBackgroundColor: B[900],
+                tension: 0.4,
+                fill: true,
+              },
+              {
+                label: 'Not Aligned',
+                data: notAligned,
+                borderColor: '#ef4444',
+                backgroundColor: '#ef444422',
+                pointBackgroundColor: '#ef4444',
+                tension: 0.4,
+                fill: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+              y: { ticks: { font: { size: 10 } } },
+            },
+          },
+        });
+      },
+      onFail: async (err) => error(err?.message ?? 'Unable to fetch alignment analytics due to an error.'),
+    });
+  }
+
+  onMount(async () => {
+    if (!$user.default)
+      users = users.filter((user) => user.label !== 'System Admins');
+    
+    await Promise.all([
+      getSummaries(),
+      getCompanyIndustryAnalytics(),
+      getCompanyVerificaitonAnalytics(),
+      getAlumniVerificationAnalytics(),
+      getAlumniCountByCourseAnalytics(),
+      getAlumniEmploymentAnalytics(),
+      getAlumniAlignmentAnalytics(),
+    ]);
   });
 
   onDestroy(() => {
-    empChartInstance?.destroy();
-  });
-
-  // Reactively rebuild employment chart when year changes
-  $effect(() => {
-    const year = selectedYear;
-    if (empChartCanvas) untrack(() => buildEmpChart());
+    companyPipelineChart?.destroy();
+    alumniPipelineChart?.destroy();
+    alumniPerCourseGraph?.destroy();
+    alumniEmpStatuesGraph?.destroy();
+    alumniAlignedCourseGraph?.destroy();
+    companyIndustryChart?.destroy();
   });
 </script>
 
@@ -287,43 +371,183 @@
     </div>
   </section>
 
-  <!-- Company Verification -->
+  <!-- Alumni Overview -->
   <section>
-    <h2 class="text-xs font-medium uppercase tracking-widest text-gray-400 mb-3">Company Verification</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <h2 class="text-xs font-medium uppercase tracking-widest text-gray-400 mb-3">Alumni Analytics</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
-      <!-- Donut -->
+      <!-- Alumni status pie -->
       <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
-        <p class="text-xs text-gray-400 mb-3">Verification status</p>
-        <div class="flex flex-wrap gap-2 mb-3 text-xs text-gray-500">
-          {#each [
-            { label: 'Fully verified',     color: '#0c447c' },
-            { label: 'Rejected by admin',  color: '#E24B4A' },
-            { label: 'Rejected by PESO',   color: '#D85A30' },
-            { label: 'Pending (admin)',    color: '#BA7517' },
-            { label: 'Pending (PESO)',     color: '#85b7eb' },
-          ] as l}
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-gray-400 mb-3">Verification Status</p>
+          <select
+            bind:value={alumniStatus}
+            onchange={async (e) => await getAlumniVerificationAnalytics(e.target.value)}
+            class="py-1 rounded border border-gray-200 text-sm"
+          >
+            <option value={null}>Overall</option>
+            <option value={true}>Active</option>
+            <option value={false}>Inactive</option>
+          </select>
+        </div>
+        <div class="flex gap-3 mb-3 text-xs text-gray-500">
+          {#each [['Verified',B[900]],['Rejected',B[700]],['Pending',B[500]]] as [l,c]}
             <span class="flex items-center gap-1">
-              <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{l.color}"></span>
-              {l.label}
+              <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
             </span>
           {/each}
         </div>
-        <div class="relative h-52">
-          <canvas bind:this={companyDonutCanvas}></canvas>
+        <div class="relative h-48">
+          <canvas bind:this={alumniStatusCanvas}></canvas>
         </div>
       </div>
 
-      <!-- Pipeline bar -->
+      <!-- Course bar -->
       <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
-        <p class="text-xs text-gray-400 mb-3">Verification pipeline</p>
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-xs text-gray-400 mb-3">Alumni By Course</p>
+          <select
+            bind:value={alumniCountStatus}
+            onchange={async (e) => await getAlumniCountByCourseAnalytics(e.target.value)}
+            class="py-1 rounded border border-gray-200 text-sm"
+          >
+            <option value={null}>Overall</option>
+            <option value={true}>Active</option>
+            <option value={false}>Inactive</option>
+          </select>
+        </div>
+        <div class="relative h-64">
+          <canvas bind:this={courseChartCanvas}></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Employment by batch -->
+      <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-full flex items-center justify-between">
+            <p class="text-xs text-gray-400">Employment Status</p>
+            <div class="flex items-center gap-x-4">
+              <select
+                bind:value={alumniEmpAnalyticsStatus}
+                onchange={async (e) => await getAlumniEmploymentAnalytics(selectedYearEmpAnalytics, e.target.value)}
+                class="py-1 rounded border border-gray-200 text-sm"
+              >
+                <option value={null}>Overall</option>
+                <option value={true}>Active</option>
+                <option value={false}>Inactive</option>
+              </select>
+              <select
+                bind:value={selectedYearEmpAnalytics}
+                onchange={async (e) => await getAlumniEmploymentAnalytics(e.target.value, alumniEmpAnalyticsStatus)}
+                class="py-1 rounded border border-gray-200 text-sm"
+              >
+                <option value={null}>All Batches</option>
+                {#each years as y}
+                  <option value={y}>{`Batch ${y}`}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3 text-xs text-gray-500">
+          {#each [['Employed',B[900]],['Self-employed',B[700]],['Unemployed',B[500]],['Deceased',B[300]]] as [l,c]}
+            <span class="flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
+            </span>
+          {/each}
+        </div>
+        <div class="relative h-64">
+          <canvas bind:this={empChartCanvas}></canvas>
+        </div>
+      </div>
+  
+      <!-- Course-aligned employment -->
+      <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-full flex items-center justify-between">
+            <p class="text-xs text-gray-400">Course Aligned Employment</p>
+            <div class="flex items-center gap-x-4">
+              <select
+                bind:value={alumniEmpAlignmentStatus}
+                onchange={async (e) => await getAlumniAlignmentAnalytics(selectedYearEmpAlignment, e.target.value)}
+                class="py-1 rounded border border-gray-200 text-sm"
+              >
+                <option value={null}>Overall</option>
+                <option value={true}>Active</option>
+                <option value={false}>Inactive</option>
+              </select>
+              <select
+                bind:value={selectedYearEmpAlignment}
+                onchange={async (e) => await getAlumniAlignmentAnalytics(e.target.value, alumniEmpAlignmentStatus)}
+                class="py-1 rounded border border-gray-200 text-sm"
+              >
+                <option value={null}>All Batches</option>
+                {#each years as y}
+                  <option value={y}>{`Batch ${y}`}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3 mb-3 text-xs text-gray-500">
+          {#each [['Aligned to course',B[900]],['Not aligned','#ef4444']] as [l,c]}
+            <span class="flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
+            </span>
+          {/each}
+        </div>
+        <div class="relative h-64">
+          <canvas bind:this={alignedChartCanvas}></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Company Verification -->
+  <section>
+    <h2 class="text-xs font-medium uppercase tracking-widest text-gray-400 mb-3">Company Analytics</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xs text-gray-400">Companies Per Industry</h3>
+          <select
+            bind:value={companyIndustryStatus}
+            onchange={async (e) => await getCompanyIndustryAnalytics(e.target.value)}
+            class="py-1 rounded border border-gray-200 text-sm"
+          >
+            <option value={null}>Overall</option>
+            <option value={true}>Active</option>
+            <option value={false}>Inactive</option>
+          </select>
+        </div>
+        <div class="relative h-64">
+          <canvas bind:this={industryBarCanvas}></canvas>
+        </div>
+      </div>
+    
+      <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-gray-400 mb-3">Verification Status</p>
+          <select
+            bind:value={companyStatus}
+            onchange={async (e) => await getCompanyVerificaitonAnalytics(e.target.value)}
+            class="py-1 rounded border border-gray-200 text-sm"
+          >
+            <option value={null}>Overall</option>
+            <option value={true}>Active</option>
+            <option value={false}>Inactive</option>
+          </select>
+        </div>
         <div class="flex flex-wrap gap-2 mb-3 text-xs text-gray-500">
           {#each [
-            { label: 'Submitted',      color: '#378add' },
-            { label: 'Admin verified', color: '#185fa5' },
-            { label: 'PESO verified',  color: '#042c53' },
-            { label: 'Admin rejected', color: '#D85A30' },
-            { label: 'PESO rejected',  color: '#E24B4A' },
+            { label: 'Fully Verified',      color: B[900] },
+            { label: 'System Admin. Pending', color: B[700] },
+            { label: 'PESO Staff Pending',  color: B[500] },
+            { label: 'System Admin. Rejected', color: B[300] },
+            { label: 'PESO Staff Rejected',  color: B[100] },
           ] as l}
             <span class="flex items-center gap-1">
               <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{l.color}"></span>
@@ -337,75 +561,4 @@
       </div>
     </div>
   </section>
-
-  <!-- Alumni Overview -->
-  <section>
-    <h2 class="text-xs font-medium uppercase tracking-widest text-gray-400 mb-3">Alumni Overview</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-
-      <!-- Alumni status pie -->
-      <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
-        <p class="text-xs text-gray-400 mb-3">Verification status</p>
-        <div class="flex gap-3 mb-3 text-xs text-gray-500">
-          {#each [['Verified','#1D9E75'],['Rejected','#E24B4A'],['Pending','#BA7517']] as [l,c]}
-            <span class="flex items-center gap-1">
-              <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
-            </span>
-          {/each}
-        </div>
-        <div class="relative h-48">
-          <canvas bind:this={alumniStatusCanvas}></canvas>
-        </div>
-      </div>
-
-      <!-- Course bar -->
-      <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
-        <p class="text-xs text-gray-400 mb-3">Alumni by course</p>
-        <div class="relative h-48">
-          <canvas bind:this={courseChartCanvas}></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Employment by batch -->
-    <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4 mb-4">
-      <div class="flex items-center gap-3 mb-3">
-        <p class="text-xs text-gray-400">Employment status</p>
-        <select
-          bind:value={selectedYear}
-          class="text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
-        >
-          {#each years as y}
-            <option value={y}>{y === 'Overall' ? 'Overall' : `Batch ${y}`}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="flex flex-wrap gap-2 mb-3 text-xs text-gray-500">
-        {#each [['Employed','#0c447c'],['Self-employed','#378add'],['Unemployed','#1D9E75'],['Deceased','#888780']] as [l,c]}
-          <span class="flex items-center gap-1">
-            <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
-          </span>
-        {/each}
-      </div>
-      <div class="relative h-64">
-        <canvas bind:this={empChartCanvas}></canvas>
-      </div>
-    </div>
-
-    <!-- Course-aligned employment -->
-    <div class="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-400 mb-3">Course-aligned employment</p>
-      <div class="flex gap-3 mb-3 text-xs text-gray-500">
-        {#each [['Aligned to course','#0c447c'],['Not aligned','#85b7eb']] as [l,c]}
-          <span class="flex items-center gap-1">
-            <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:{c}"></span>{l}
-          </span>
-        {/each}
-      </div>
-      <div class="relative h-56">
-        <canvas bind:this={alignedChartCanvas}></canvas>
-      </div>
-    </div>
-  </section>
-
 </div>

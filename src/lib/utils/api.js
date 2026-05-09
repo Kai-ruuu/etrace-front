@@ -53,7 +53,6 @@ async function call(path, {
                 parsed = await res.text();
                 break;
         }
-        
         await handle(res, parsed, onSuccess, onFail);
     } catch (error) {
         console.error(error);
