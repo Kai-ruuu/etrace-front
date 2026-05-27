@@ -1,9 +1,10 @@
 <script>
 	import { user } from "$lib/stores/user";
 	import { getRoleDisplay } from "$lib/utils/ui";
-	import { Shield, ShieldUser, User, UserCog } from "lucide-svelte";
+	import { Menu, Shield, ShieldUser, User, UserCog } from "lucide-svelte";
 	import TextM from "../global/TextM.svelte";
 	import TextS from "../global/TextS.svelte";
+	import { sidebarShown } from "$lib/stores/sidebar";
 
     let {
         exporting = $bindable(false),
@@ -12,7 +13,15 @@
 </script>
 
 <div class="border-b border-gray-200 px-6 min-h-16 flex items-center justify-between bg-white shrink-0">
-    <TextM class='text-gray-600'>Dashboard</TextM>
+    <div class="flex gap-x-4 items-center">
+        <button
+            class="cursor-pointer"
+            onclick={() => sidebarShown.set(!$sidebarShown)}
+        >
+            <Menu class="w-5"/>
+        </button>
+        <TextM class='text-gray-600'>Dashboard</TextM>
+    </div>
 
     <button 
         onclick={onExport}

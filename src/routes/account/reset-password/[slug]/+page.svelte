@@ -73,7 +73,7 @@
 
 <BaseContainer withBgImage={true} class="animate-bg">
     <div class="bg-white/50 w-full h-full flex items-center justify-center">
-        <RoundedCard class="p-8 pb-6 md:w-2/7 rounded-xl flex flex-col gap-y-5">
+        <RoundedCard class="p-8 pb-6 w-[calc(100%-4rem)] md:w-1/2 lg:w-2/7 rounded-xl flex flex-col gap-y-5">
             <div class="space-y-2">
                 <TextM class='font-bold text-gray-600'>Password Reset</TextM>
                 <TextS>Enter your Etrace+ account's new password.</TextS>

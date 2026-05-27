@@ -46,7 +46,7 @@
 {:else}
     {#if $user.profile.agreed_to_consent}
         <BaseContainer class='flex items-stretch'>
-            <Sidebar />
+            <Sidebar/>
             <div class="grow flex flex-col items-stretch h-dvh">
                 {@render children()}
             </div>

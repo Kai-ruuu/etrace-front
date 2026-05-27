@@ -215,11 +215,11 @@
 
 <BaseContainer withBgImage={true} class="animate-bg">
     <div class={twMerge(
-        "bg-white/50 w-full h-full max-h-full overflow-auto scrollbar p-8",
+        "bg-white/50 w-full h-full max-h-full overflow-auto scrollbar py-8 md:p-8",
         !['Legal & Regulatory Requirements'].includes(categCurrent) && 'flex items-center justify-center'
     )}>
         <RoundedCard class={twMerge(
-            "p-8 pb-6 md:w-1/3 rounded-xl flex flex-col items-stretch gap-y-5",
+            "p-8 pb-6 w-[calc(100%-4rem)] md:w-1/2 lg:w-1/3 rounded-xl flex flex-col items-stretch gap-y-5",
             ['Legal & Regulatory Requirements'].includes(categCurrent) && 'mx-auto'
         )}>
             <div class="flex flex-col items-stretch gap-y-4">

@@ -27,14 +27,14 @@
 
 <BaseContainer withBgImage={true} class="animate-bg">
     <div class="bg-white/50 w-full h-full flex items-center justify-center">
-        <RoundedCard class="p-8 pb-6 md:w-2/5 rounded-xl flex flex-col gap-y-5">
+        <RoundedCard class="p-8 pb-6 w-[calc(100%-4rem)] md:w-2/3 lg:w-2/5 rounded-xl flex flex-col gap-y-5">
 
             <div>
                 <h1 class="text-lg font-medium text-gray-900">Create your account</h1>
                 <p class="text-sm text-gray-500 mt-0.5">Choose how you'll be using the E-trace+:</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {#each roles as role}
                     <button
                         onclick={() => selectedRole = role.id}

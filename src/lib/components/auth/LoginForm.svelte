@@ -62,7 +62,7 @@
 
 <BaseContainer withBgImage={true} class='animate-bg'>
     <div class="bg-white/50 w-full h-full flex items-center justify-center">
-        <RoundedCard class='p-8 pb-6 md:w-2/7 rounded-xl'>
+        <RoundedCard class='p-8 pb-6 rounded-xl w-[calc(100%-4rem)] md:w-1/2 lg:w-2/7'>
             <form
                 onsubmit={onLogin}
                 class="w-full h-full"

@@ -8,7 +8,7 @@
     } = $props();
 </script>
 
-<div class={twMerge("w-screen h-dvh bg-gray-50 text-gray-800", withBgImage && "bg-[url(/bg.jpg)] bg-cover bg-center bg-no-repeat bg-fixed", className)}>
+<div class={twMerge("w-screen h-dvh bg-gray-50 text-gray-800", withBgImage && "lg:bg-[url(/bg.jpg)] bg-cover bg-center bg-no-repeat bg-fixed", className)}>
     {#if children}
         {@render children()}
     {/if}
