@@ -9,6 +9,7 @@
 	import TextS from "$lib/components/global/TextS.svelte";
 	import TextX from "$lib/components/global/TextX.svelte";
 	import AlumniHeader from "$lib/components/user/AlumniHeader.svelte";
+	import JobAddressModal from "$lib/components/user/JobAddressModal.svelte";
 	import VerificationPanel from "$lib/components/user/VerificationPanel.svelte";
 	import { user } from "$lib/stores/user";
 	import { apiUrl, deleteJson, geocode, get, postJson } from "$lib/utils/api";
@@ -46,6 +47,9 @@
     let post = $state(null);
     let openPost = $state(false);
 
+    let openMapModalAddress = $state(null);
+    let openMapModal = $state(false);
+    
     let openVercent = $state(false);
 
     let openProfile = $state(false);
@@ -928,3 +932,8 @@
     >
     </iframe>
 </Modal>
+
+<JobAddressModal
+    address={openMapModalAddress}
+    bind:show={openMapModal}
+></JobAddressModal>

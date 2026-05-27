@@ -226,6 +226,9 @@
     }
 
     async function onLoadRecord() {
+        matches = [];
+        openFindInRecords = false;
+
         await get(`/api/institution/graduate-record/${openedProfile.profile.course_id}/${openedProfile.profile.graduation_year}`,
             {
                 onSuccess: async (_data) => {

@@ -16,8 +16,11 @@
     let map = $state(null);
     let mapErrMsg = $state("");
     let mapLoading = $state(false);
+    let mapEl = $state(null);
 
     async function onGeocodeCareerAddress() {
+        if (!mapEl) return;
+
         mapLoading = true;
         mapErrMsg = "";
 
@@ -31,8 +34,6 @@
 
             const [latitude, longitude] = data;
 
-            marker?.remove();
-
             const L = (await import('leaflet')).default;
             await import('leaflet/dist/leaflet.css');
 
@@ -42,10 +43,9 @@
                 marker = null;
             }
 
-            map = L.map('map', { zoomControl: false }).setView([latitude, longitude], 13);
+            map = L.map(mapEl, { zoomControl: false }).setView([latitude, longitude], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             marker = L.marker([latitude, longitude]).addTo(map);
-
             map.flyTo([latitude, longitude], 15, { animate: true, duration: 1.2 });
         } catch (error) {
             console.error(error);
@@ -54,9 +54,17 @@
         }
     }
 
+    function closeModal() {
+        if (map) {
+            map.remove();
+            map = null;
+            marker = null;
+        }
+        show = false;
+    }
+
     $effect(() => {
         if (show) {
-            // tick() ensures #map is in the DOM before Leaflet touches it
             import('svelte').then(({ tick }) => tick().then(onGeocodeCareerAddress));
         }
     });
@@ -69,12 +77,12 @@
                 <TextM>{address}</TextM>
                 <ButtonM
                     Icon={X}
-                    onclick={() => show = false}
+                    onclick={closeModal}
                     class='p-0 px-1 bg-red-500'
                 />
             </div>
 
-            <div id="map" class="grow rounded-bl-lg rounded-br-lg flex items-center justify-center z-0">
+            <div bind:this={mapEl} class="grow rounded-bl-lg rounded-br-lg flex items-center justify-center z-0">
                 {#if mapLoading}
                     <TextS>Map Loading...</TextS>
                 {:else}
